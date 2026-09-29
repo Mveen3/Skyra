@@ -5,7 +5,7 @@
 | Document | Skyra Technical Game Architecture & Specification (TGAS) |
 | Version | 1.0.0 |
 | Date | 2026-09-29 |
-| Source brief | `Ref_Docs/Skyra.md` (owner's concept & requirements) |
+| Source brief | `docs/Skyra.md` (owner's concept & requirements) |
 | Primary reader | Autonomous AI coding agent that generates the complete, runnable codebase from an empty repository |
 | Secondary reader | Project owner (review, tuning, playtesting) |
 | Status | Approved for implementation |
@@ -4789,7 +4789,7 @@ Checked **at the end**: Skyra kills ≥ 5; Skyra deaths ≥ 1; total bot kills o
 
 ## Appendix G — Requirement traceability (owner brief → specification)
 
-| Owner requirement (from `Ref_Docs/Skyra.md`) | Where it is specified |
+| Owner requirement (from `docs/Skyra.md`) | Where it is specified |
 |---|---|
 | Simple, smooth, no ads, few settings | §1.1 pillars, §1.2 budgets, §8.1 |
 | One creative map, large enough for a laptop screen | §6 (7680 × 3840 wu ≈ 14 screens at 1x) |

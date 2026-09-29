@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "modes": {
+    "mini_post": {
+      "display_name": "Mini Post",
+      "spawn_loadout": {
+        "slot_1": "magnum",
+        "slot_2": null,
+        "grenades": 2
+      },
+      "max_grenades": 4,
+      "frag_pack_amount": 2,
+      "default_weapon": "magnum",
+      "socket_respawn_s": 15.0,
+      "socket_stale_reroll_s": 60.0,
+      "stale_reroll_min_distance": 800,
+      "drop_weights": {
+        "mp5": 16,
+        "ak47": 16,
+        "shotgun": 13,
+        "m93ba": 8,
+        "flamethrower": 9,
+        "phasr": 9,
+        "rocket_launcher": 6,
+        "saw_gun": 10,
+        "frag_pack": 13
+      },
+      "zone_affinity": {
+        "ridge": {
+          "mp5": 0.8,
+          "ak47": 1.2,
+          "shotgun": 0.4,
+          "m93ba": 2.5,
+          "flamethrower": 0.3,
+          "phasr": 1.6,
+          "rocket_launcher": 1.0,
+          "saw_gun": 0.8,
+          "frag_pack": 1.0
+        },
+        "mid": {
+          "mp5": 1.0,
+          "ak47": 1.0,
+          "shotgun": 1.0,
+          "m93ba": 1.0,
+          "flamethrower": 1.0,
+          "phasr": 1.0,
+          "rocket_launcher": 1.3,
+          "saw_gun": 1.2,
+          "frag_pack": 1.0
+        },
+        "bunker": {
+          "mp5": 1.4,
+          "ak47": 0.9,
+          "shotgun": 2.2,
+          "m93ba": 0.25,
+          "flamethrower": 2.2,
+          "phasr": 0.6,
+          "rocket_launcher": 0.5,
+          "saw_gun": 1.5,
+          "frag_pack": 1.2
+        }
+      },
+      "socket_caps": {
+        "rocket_launcher": 1,
+        "m93ba": 2
+      },
+      "director": {
+        "max_tokens": {
+          "3": 2,
+          "5": 2,
+          "7": 2
+        },
+        "relax_tokens": 1,
+        "bubble_radius": 900,
+        "staging_min": 1100,
+        "staging_max": 1700,
+        "buildup_staging_min": 1000,
+        "buildup_staging_max": 1500,
+        "relax_staging_min": 1500,
+        "relax_staging_max": 2200
+      }
+    },
+    "sniper_post": {
+      "display_name": "Sniper Post",
+      "spawn_loadout": {
+        "slot_1": "m93ba",
+        "slot_2": null,
+        "grenades": 3
+      },
+      "max_grenades": 5,
+      "frag_pack_amount": 2,
+      "default_weapon": "m93ba",
+      "socket_respawn_s": 10.0,
+      "socket_stale_reroll_s": 60.0,
+      "stale_reroll_min_distance": 800,
+      "drop_weights": {
+        "m93ba": 60,
+        "frag_pack": 40
+      },
+      "zone_affinity": {},
+      "socket_caps": {},
+      "director": {
+        "max_tokens": {
+          "3": 2,
+          "5": 2,
+          "7": 2
+        },
+        "relax_tokens": 1,
+        "bubble_radius": 1400,
+        "staging_min": 1800,
+        "staging_max": 3000,
+        "buildup_staging_min": 1600,
+        "buildup_staging_max": 2600,
+        "relax_staging_min": 2400,
+        "relax_staging_max": 3400
+      }
+    }
+  }
+}

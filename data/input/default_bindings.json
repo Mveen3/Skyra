@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "actions": [
+    {"id": "move_left", "group": "Movement", "label": "Move Left", "defaults": ["key:A", "key:Left"], "remappable": true},
+    {"id": "move_right", "group": "Movement", "label": "Move Right", "defaults": ["key:D", "key:Right"], "remappable": true},
+    {"id": "jetpack", "group": "Movement", "label": "Jump / Jetpack", "defaults": ["key:W", "key:Space"], "remappable": true},
+    {"id": "crouch", "group": "Movement", "label": "Crouch / Drop / Dive", "defaults": ["key:S", "key:Down"], "remappable": true},
+    {"id": "fire", "group": "Combat", "label": "Fire", "defaults": ["mouse:left", ""], "remappable": true},
+    {"id": "throw_grenade", "group": "Combat", "label": "Throw Frag", "defaults": ["mouse:right", "key:G"], "remappable": true},
+    {"id": "reload", "group": "Combat", "label": "Reload", "defaults": ["key:R", ""], "remappable": true},
+    {"id": "switch_weapon", "group": "Weapons", "label": "Switch Weapon", "defaults": ["key:Q", "mouse:wheel"], "remappable": true},
+    {"id": "weapon_slot_1", "group": "Weapons", "label": "Weapon Slot 1", "defaults": ["key:1", ""], "remappable": true},
+    {"id": "weapon_slot_2", "group": "Weapons", "label": "Weapon Slot 2", "defaults": ["key:2", ""], "remappable": true},
+    {"id": "pickup_swap", "group": "Weapons", "label": "Pick Up / Swap", "defaults": ["key:E", ""], "remappable": true},
+    {"id": "drop_weapon", "group": "Weapons", "label": "Drop Weapon", "defaults": ["key:X", ""], "remappable": true},
+    {"id": "scoreboard", "group": "Game", "label": "Scoreboard (hold)", "defaults": ["key:Tab", ""], "remappable": true},
+    {"id": "pause", "group": "Game", "label": "Pause", "defaults": ["key:Escape", "key:P"], "remappable": true},
+    {"id": "restart_match", "group": "Game", "label": "Restart Match", "defaults": ["key:F5", ""], "remappable": true},
+    {"id": "toggle_fullscreen", "group": "Game", "label": "Toggle Fullscreen", "defaults": ["key:F11", ""], "remappable": true},
+    {"id": "debug_overlay", "group": "Game", "label": "Debug Overlay", "defaults": ["key:F3", ""], "remappable": false}
+  ]
+}

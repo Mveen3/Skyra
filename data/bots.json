@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "human": {
+    "id": "skyra",
+    "name": "Skyra",
+    "primary": "#F4F7FB",
+    "secondary": "#FFC53D",
+    "visor": "#39E6FF",
+    "scarf": "#FF4D6D",
+    "helmet": "skyra_fin"
+  },
+  "bots": [
+    {
+      "id": "alpha",
+      "name": "Alpha",
+      "archetype": "Striker",
+      "primary": "#E63946",
+      "secondary": "#2B2D42",
+      "visor": "#FFD6A5",
+      "helmet": "crest",
+      "aggression": 0.85,
+      "accuracy_mult": 1.0,
+      "reaction_mult": 0.95,
+      "range_mult": 0.85,
+      "jet_hop_per_min": 24,
+      "grenade_affinity": 0.5,
+      "weapon_pref": {
+        "ak47": 1.3,
+        "shotgun": 1.3,
+        "rocket_launcher": 1.2
+      }
+    },
+    {
+      "id": "beta",
+      "name": "Beta",
+      "archetype": "Tactician",
+      "primary": "#FF8C42",
+      "secondary": "#3D2C2E",
+      "visor": "#B8F2E6",
+      "helmet": "twin_antenna",
+      "aggression": 0.6,
+      "accuracy_mult": 1.05,
+      "reaction_mult": 1.0,
+      "range_mult": 1.0,
+      "jet_hop_per_min": 16,
+      "grenade_affinity": 0.7,
+      "weapon_pref": {
+        "ak47": 1.3,
+        "phasr": 1.2,
+        "mp5": 1.1
+      }
+    },
+    {
+      "id": "gamma",
+      "name": "Gamma",
+      "archetype": "Sharpshooter",
+      "primary": "#8AC926",
+      "secondary": "#1F3A1F",
+      "visor": "#FFE66D",
+      "helmet": "goggles",
+      "aggression": 0.4,
+      "accuracy_mult": 0.85,
+      "reaction_mult": 1.1,
+      "range_mult": 1.25,
+      "jet_hop_per_min": 10,
+      "grenade_affinity": 0.3,
+      "weapon_pref": {
+        "m93ba": 1.5,
+        "phasr": 1.3,
+        "ak47": 1.1
+      }
+    },
+    {
+      "id": "delta",
+      "name": "Delta",
+      "archetype": "Flanker",
+      "primary": "#9B5DE5",
+      "secondary": "#2A1B3D",
+      "visor": "#F1FAEE",
+      "helmet": "horns",
+      "aggression": 0.7,
+      "accuracy_mult": 1.1,
+      "reaction_mult": 0.9,
+      "range_mult": 0.8,
+      "jet_hop_per_min": 30,
+      "grenade_affinity": 0.4,
+      "weapon_pref": {
+        "mp5": 1.3,
+        "saw_gun": 1.3,
+        "shotgun": 1.2
+      }
+    },
+    {
+      "id": "theta",
+      "name": "Theta",
+      "archetype": "Anchor",
+      "primary": "#2EC4B6",
+      "secondary": "#123C3A",
+      "visor": "#FFBF69",
+      "helmet": "halo_dome",
+      "aggression": 0.35,
+      "accuracy_mult": 0.95,
+      "reaction_mult": 1.05,
+      "range_mult": 1.15,
+      "jet_hop_per_min": 8,
+      "grenade_affinity": 0.6,
+      "weapon_pref": {
+        "ak47": 1.2,
+        "m93ba": 1.3,
+        "rocket_launcher": 1.2
+      }
+    },
+    {
+      "id": "phi",
+      "name": "Phi",
+      "archetype": "Trickster",
+      "primary": "#F15BB5",
+      "secondary": "#3B1230",
+      "visor": "#CAFFBF",
+      "helmet": "cat_ears",
+      "aggression": 0.75,
+      "accuracy_mult": 1.15,
+      "reaction_mult": 0.9,
+      "range_mult": 0.9,
+      "jet_hop_per_min": 36,
+      "grenade_affinity": 1.0,
+      "weapon_pref": {
+        "saw_gun": 1.4,
+        "flamethrower": 1.3,
+        "mp5": 1.1
+      }
+    },
+    {
+      "id": "chi",
+      "name": "Chi",
+      "archetype": "Hunter",
+      "primary": "#4D96FF",
+      "secondary": "#0F1E3D",
+      "visor": "#FFD166",
+      "helmet": "spike_crown",
+      "aggression": 0.8,
+      "accuracy_mult": 1.0,
+      "reaction_mult": 0.85,
+      "range_mult": 1.0,
+      "jet_hop_per_min": 20,
+      "grenade_affinity": 0.5,
+      "weapon_pref": {
+        "phasr": 1.3,
+        "ak47": 1.2,
+        "mp5": 1.1
+      }
+    }
+  ]
+}

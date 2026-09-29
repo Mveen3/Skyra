@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD1A1"/>
+      <stop offset="60%" stop-color="#F29E6D"/>
+      <stop offset="100%" stop-color="#3A4FA3"/>
+    </radialGradient>
+    <linearGradient id="fin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD23F"/>
+      <stop offset="100%" stop-color="#FF9F1C"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#39E6FF"/>
+      <stop offset="100%" stop-color="#00A8E8"/>
+    </linearGradient>
+  </defs>
+  <!-- Background disc -->
+  <circle cx="128" cy="128" r="120" fill="url(#sky)" stroke="#14161C" stroke-width="6"/>
+  <!-- Helmet Fin -->
+  <path d="M 100 40 L 160 55 L 140 100 L 90 90 Z" fill="url(#fin)" stroke="#14161C" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Scarf tail -->
+  <path d="M 85 170 C 60 185, 40 175, 25 190 C 40 215, 80 195, 95 185 Z" fill="#FF4D6D" stroke="#14161C" stroke-width="4"/>
+  <!-- Helmet Base -->
+  <circle cx="128" cy="135" r="55" fill="#F4F7FB" stroke="#14161C" stroke-width="6"/>
+  <!-- Visor -->
+  <rect x="120" y="110" width="55" height="35" rx="12" fill="url(#visor)" stroke="#14161C" stroke-width="5"/>
+  <!-- Visor Highlight -->
+  <path d="M 128 116 L 165 116" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  <!-- Scarf wrap -->
+  <path d="M 90 175 C 110 195, 150 195, 170 175 C 160 165, 100 165, 90 175 Z" fill="#FF4D6D" stroke="#14161C" stroke-width="5"/>
+</svg>

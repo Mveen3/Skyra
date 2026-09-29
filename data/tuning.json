@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "world": {
+    "tile_size": 64,
+    "physics_hz": 60,
+    "max_projectiles": 512,
+    "max_loose_weapons": 12,
+    "loose_weapon_despawn_s": 20.0,
+    "loose_weapon_blink_s": 3.0
+  },
+  "character": {
+    "stand_w": 44,
+    "stand_h": 84,
+    "crouch_h": 60,
+    "head_zone_stand": 24,
+    "head_zone_crouch": 20,
+    "shoulder_y_stand": -56,
+    "shoulder_y_crouch": -38,
+    "max_health": 100,
+    "regen_delay_s": 4.0,
+    "regen_per_s": 15,
+    "pickup_radius": 72,
+    "boost_pickup_radius": 56,
+    "kill_credit_window_s": 5.0
+  },
+  "movement": {
+    "run_speed": 420,
+    "crouch_speed": 210,
+    "air_speed": 460,
+    "ground_accel": 3000,
+    "ground_turn_accel": 5400,
+    "ground_friction": 3600,
+    "air_accel": 1500,
+    "air_drag": 350,
+    "gravity": 1800,
+    "terminal_velocity": 1100,
+    "dive_gravity_mult": 1.4,
+    "dive_terminal": 1300,
+    "jump_velocity": 560,
+    "coyote_s": 0.08,
+    "jump_buffer_s": 0.1,
+    "jet_delay_after_jump_s": 0.12,
+    "step_up_height": 34,
+    "drop_through_s": 0.25,
+    "moving_threshold": 60,
+    "knockback_speed_cap": 1400,
+    "landing_fx_speed": 700
+  },
+  "jetpack": {
+    "thrust": 3300,
+    "max_rise": 520,
+    "fuel_max": 100,
+    "fuel_burn_per_s": 28,
+    "recharge_delay_s": 0.6,
+    "recharge_ground_per_s": 40,
+    "recharge_air_per_s": 12,
+    "recharge_updraft_per_s": 30,
+    "unlock_threshold": 15
+  },
+  "updraft": {
+    "lift": 2100,
+    "rise_cap": 380,
+    "jet_rise_cap": 680
+  },
+  "respawn": {
+    "human_delay_s": 2.0,
+    "bot_delay_s": 3.0,
+    "human_stealth_s": 2.0,
+    "human_invuln_s": 2.0,
+    "materialize_s": 0.35
+  },
+  "rocket_boost": {
+    "first_spawn_s": 45.0,
+    "respawn_min_s": 35.0,
+    "respawn_max_s": 50.0,
+    "ground_lifetime_s": 30.0,
+    "buff_s": 10.0,
+    "spawn_in_s": 0.6,
+    "despawn_s": 0.4,
+    "alternate_socket_chance": 0.7,
+    "bots_can_collect": false,
+    "mult": {
+      "run": 1.35,
+      "air": 1.4,
+      "air_accel": 1.4,
+      "thrust": 1.5,
+      "rise": 1.45,
+      "fuel_burn": 0.0
+    }
+  },
+  "damage": {
+    "bot_to_human_mult": 0.85,
+    "friendly_bot_damage": false,
+    "human_self_damage": true
+  },
+  "camera": {
+    "pos_lambda": 10.0,
+    "zoom_lambda": 6.0,
+    "lookahead_base": 0.25,
+    "lookahead_per_scope": 0.1375,
+    "deadzone": 0.08,
+    "aim_height": -48,
+    "death_zoom_in": 1.15,
+    "death_desat": 0.8,
+    "shake_max_offset": 18,
+    "shake_max_rot_deg": 1.2,
+    "trauma_decay_per_s": 1.6,
+    "noise_hz": 22
+  },
+  "scope_model": "area",
+  "match": {
+    "countdown_s": 3,
+    "durations_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "default_duration_min": 7,
+    "bot_counts": [
+      3,
+      5,
+      7
+    ],
+    "default_bots": 5,
+    "default_mode": "mini_post",
+    "end_slowmo_scale": 0.25,
+    "end_slowmo_real_s": 1.2,
+    "end_to_summary_real_s": 2.5,
+    "one_minute_warning_s": 60,
+    "final_countdown_s": 10
+  },
+  "streaks": {
+    "multi_window_s": 4.0,
+    "labels_multi": {
+      "2": "DOUBLE KILL",
+      "3": "TRIPLE KILL",
+      "4": "MULTI KILL"
+    },
+    "labels_streak": {
+      "5": "RAMPAGE",
+      "10": "UNSTOPPABLE",
+      "15": "LEGENDARY"
+    }
+  }
+}

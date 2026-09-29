@@ -1,0 +1,141 @@
+# Implements §9.5 Global Enums.
+class_name Enums
+extends RefCounted
+
+enum GameState {
+	INITIALIZE,
+	PRESET_MENU,
+	MATCH_LOADING,
+	SPAWNING,
+	MATCH_ACTIVE,
+	PAUSED,
+	MATCH_ENDED,
+	SCORE_SUMMARY,
+	QUITTING,
+	FATAL_ERROR
+}
+
+enum Team {
+	HUMAN,
+	BOT
+}
+
+enum LifeState {
+	ALIVE,
+	DEAD
+}
+
+enum Tile {
+	AIR_EXTERIOR,
+	AIR_INTERIOR,
+	UPDRAFT,
+	ROCK,
+	METAL,
+	CRATE,
+	HALF,
+	ONE_WAY
+}
+
+enum Surface {
+	NONE,
+	ROCK,
+	METAL,
+	WOOD,
+	SAND
+}
+
+enum WeaponClass {
+	PISTOL,
+	SMG,
+	RIFLE,
+	SHOTGUN,
+	SNIPER,
+	FLAMER,
+	ENERGY,
+	LAUNCHER,
+	SPECIAL
+}
+
+enum FireMode {
+	SEMI,
+	AUTO,
+	PUMP,
+	BOLT,
+	CONTINUOUS
+}
+
+enum Delivery {
+	PROJECTILE,
+	HITSCAN_BEAM,
+	FLAME
+}
+
+enum ProjectileKind {
+	NONE,
+	BULLET,
+	PELLET,
+	SLUG,
+	ROCKET,
+	SAW_BLADE,
+	FLAME_PUFF,
+	GRENADE
+}
+
+enum ReloadType {
+	MAGAZINE,
+	PER_SHELL
+}
+
+enum WeaponState {
+	IDLE,
+	COOLDOWN,
+	RELOADING,
+	SWITCHING
+}
+
+enum SocketType {
+	SPAWN,
+	WEAPON,
+	BOOST
+}
+
+enum BoostPhase {
+	WAITING,
+	SPAWNING_IN,
+	AVAILABLE,
+	DESPAWNING
+}
+
+enum BotState {
+	DEAD,
+	PATROL,
+	TARGET_ACQUIRE,
+	ENGAGE,
+	SEEK_COVER,
+	RETREAT_RELOAD,
+	FLANK,
+	HOLD
+}
+
+enum DirectorRole {
+	ATTACKER,
+	FLANKER,
+	HOLDER,
+	PATROLLER
+}
+
+enum PacingPhase {
+	WARMUP,
+	BUILD_UP,
+	PEAK,
+	RELAX,
+	RESPAWN_GRACE
+}
+
+enum ImpactKind {
+	SURFACE,
+	CHARACTER,
+	FIZZLE,
+	SHATTER,
+	SMOKE
+}

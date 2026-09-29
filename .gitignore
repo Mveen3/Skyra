@@ -1,0 +1,7 @@
+.godot/
+build/
+tools/bin/
+*.tmp
+*.corrupt-*
+*.bak
+.sfx_cache/
