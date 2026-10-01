@@ -2,7 +2,9 @@
 class_name TestRunner
 extends RefCounted
 
-static func run_all(tree: SceneTree) -> void:
+## `filter` (from `--only=<substr>`) restricts the run to matching test files and
+## skips writing the report, so partial runs never overwrite docs/TEST_REPORT.md.
+static func run_all(tree: SceneTree, filter: String = "") -> void:
 	print("========================================")
 	print("           SKYRA TEST RUNNER            ")
 	print("========================================")
@@ -45,9 +47,11 @@ static func run_all(tree: SceneTree) -> void:
 	var failed_tests := 0
 
 	for script in test_classes:
+		var file_name: String = script.resource_path.get_file()
+		if not filter.is_empty() and not file_name.contains(filter):
+			continue
 		var instance = script.new()
 		var methods: Array = script.get_script_method_list()
-		var file_name: String = script.resource_path.get_file()
 
 		for m in methods:
 			var m_name: String = m["name"]
@@ -84,11 +88,12 @@ static func run_all(tree: SceneTree) -> void:
 	report_lines.append("- **Duration:** %.2f s" % total_elapsed_s)
 	report_lines.append("- **Status:** %s" % ("ALL PASSED" if failed_tests == 0 else "FAILURES DETECTED"))
 
-	var report_text := "\n".join(report_lines)
-	var fa := FileAccess.open("res://docs/TEST_REPORT.md", FileAccess.WRITE)
-	if fa:
-		fa.store_string(report_text)
-		fa.close()
+	if filter.is_empty():
+		var report_text := "\n".join(report_lines)
+		var fa := FileAccess.open("res://docs/TEST_REPORT.md", FileAccess.WRITE)
+		if fa:
+			fa.store_string(report_text)
+			fa.close()
 
 	var exit_code := 0 if failed_tests == 0 else 1
 	tree.quit(exit_code)

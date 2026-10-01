@@ -47,10 +47,48 @@ var multi_kill_count: int = 0
 var multi_kill_t: float = 0.0
 var brain: RefCounted = null
 var perception: Perception = null
+var death_pos: Vector2 = Vector2(-99999.0, -99999.0)
+var landing_speed: float = 0.0
+var spawn_count: int = 0
 
 func _init() -> void:
 	inventory = Inventory.new()
 	stats = CombatStats.new()
+
+## Clears every transient per-life field and places the character at `spawn_pos` (§3.13).
+func reset_for_spawn(spawn_pos: Vector2) -> void:
+	life_state = Enums.LifeState.ALIVE
+	pos = spawn_pos
+	prev_pos = spawn_pos
+	vel = Vector2.ZERO
+	height = 84.0
+	crouching = false
+	turning = false
+	grounded = false
+	ground_is_one_way = false
+	hit_wall = false
+	drop_through_t = 0.0
+	coyote_t = 0.0
+	jump_buffer_t = 0.0
+	since_jump_t = 99.0
+	jet_active = false
+	jet_locked = false
+	fuel = 100.0
+	recharge_delay_t = 0.0
+	in_updraft = false
+	health = 100.0
+	regen_delay_t = 0.0
+	last_enemy_damager = -1
+	last_enemy_damage_time = -99.0
+	respawn_t = 0.0
+	stealth_t = 0.0
+	invuln_t = 0.0
+	boost_t = 0.0
+	burn_t = 0.0
+	burn_tick_t = 0.0
+	burn_source = -1
+	landing_speed = 0.0
+	spawn_count += 1
 
 func aabb() -> Rect2:
 	return Rect2(pos.x - 22.0, pos.y - height, 44.0, height)

@@ -1,109 +1,102 @@
 # Skyra
 
-**Skyra** is a fast-paced 2D side-view jetpack arena shooter built with Godot 4.4+ and GDScript, inspired by the spirit of *Mini Militia*. It runs fully autonomously with zero external assets, featuring deterministic 60 Hz AABB physics, Amanatides-Woo DDA grid raycasting, a built-in procedural audio synthesizer, and dynamic vector graphics.
+**Skyra** is a fast 2D side-view jetpack arena shooter for Linux, inspired by *Mini Militia*:
+you are **Skyra**, alone against 3, 5 or 7 bots (Alpha, Beta, Gamma, Delta, Theta, Phi, Chi)
+on one hand-made map, **Outpost Skyra**. Built with Godot 4.4 and GDScript, it needs no
+external assets: the characters, weapons and map are procedural vector art and every sound
+is synthesized.
 
 ---
 
-## Quick Start
+## Quick start
 
-### Running the Game
+The repository includes the engine at `tools/bin/godot` (if it is missing, run
+`tools/setup_godot.sh` to download Godot 4.4.1).
 
-Launch with default settings (Preset Menu):
 ```bash
-./tools/bin/godot --path .
+./tools/bin/godot --path .                      # play (preset menu, fullscreen per settings)
+./tools/bin/godot --path . -- --windowed        # play in a 1600 x 900 window
+./tools/bin/godot --path . -- --autostart       # skip the menu (also: --mode=sniper_post --bots=7 --duration=5 --seed=42)
 ```
 
-Or run windowed:
-```bash
-./tools/bin/godot --path . -- --windowed
-```
+On the preset menu just press **Enter**: Mini Post · 5 bots · 7 minutes is pre-selected.
+Change the bots with `3` / `5` / `7`, the mode with `M`, the duration with `+` / `−` (or the
+mouse), and open the gear icon for controls, audio and display settings.
 
-Or instantly start a match skipping the menu:
-```bash
-./tools/bin/godot --path . -- --autostart
-```
+## Controls (defaults, remappable in Settings → Controls)
 
-### Running the Self-Test Suite
-
-Run the full self-test suite (114 unit, soak, and determinism tests in ≤ 17 s):
-```bash
-./tools/bin/godot --headless --path . -- --selftest
-```
-
-### Running Soak Tests
-
-Mini Post 180s Soak:
-```bash
-./tools/bin/godot --headless --path . -- --soak=180 --seed=1234 --bots=7 --mode=mini_post
-```
-
-Sniper Post 120s Soak:
-```bash
-./tools/bin/godot --headless --path . -- --soak=120 --seed=99 --bots=5 --mode=sniper_post
-```
-
-### Generating Audio Assets
-
-Re-synthesize all 87 procedural sound cues to `assets/audio/generated/*.wav`:
-```bash
-./tools/bin/godot --headless --path . -- --gen-sfx
-```
-
----
-
-## Default Controls
-
-| Action | Primary Key | Secondary Key |
+| Action | Primary | Secondary |
 |---|---|---|
-| **Move Left** | `A` | `Left Arrow` |
-| **Move Right** | `D` | `Right Arrow` |
-| **Jump / Jetpack** | `W` | `Space` |
-| **Crouch / Dive / Drop** | `S` | `Down Arrow` |
-| **Aim** | Mouse Pointer | – |
-| **Fire Weapon** | Left Mouse Button | – |
-| **Throw Grenade** | Right Mouse Button | `G` |
-| **Pick Up Weapon** | `E` | – |
-| **Switch Weapon** | `Q` | Mouse Wheel Up/Down |
-| **Drop Weapon** | `X` | – |
-| **Pause Match** | `Escape` | `P` |
-| **Quick Restart** | `F5` | – |
+| Move left / right | `A` / `D` | `←` / `→` |
+| Jump (tap) / Jetpack (hold) | `W` | `Space` |
+| Crouch · drop through catwalks · dive in wind shafts | `S` | `↓` |
+| Aim | mouse | – |
+| Fire | left mouse button | – |
+| Frag grenade (hold = aim arc, release = throw) | right mouse button | `G` |
+| Reload | `R` | – |
+| Switch weapon / select slot | `Q`, mouse wheel / `1`, `2` | – |
+| Pick up or swap a weapon | `E` | – |
+| Drop weapon | `X` | – |
+| Scoreboard (hold) | `Tab` | – |
+| Pause | `Esc` | `P` |
+| Restart match (confirm with F5 / Enter) | `F5` | – |
+| Fullscreen | `F11` | – |
+| Debug overlay (while open in a debug build: F6 god mode, F7 next weapon, F8 boost now, F9 kill bots) | `F3` | – |
 
-Keybindings can be customized in the in-game Settings menu or by modifying `~/.config/skyra/settings.json`.
+Key bindings, volumes and display options are saved automatically to
+`~/.config/skyra/settings.json` (`$XDG_CONFIG_HOME/skyra/` when set; override the folder
+with `SKYRA_CONFIG_DIR`). Writes are atomic and a corrupt file is backed up and reset.
 
----
+## Game modes
 
-## Configuration & Settings
+- **Mini Post** — spawn with the Magnum (infinite reserve) + 2 Frags. Hornet (MP5), Kalash
+  (AK-47), Pump, Black Arrow (M93BA), Blaze (flamethrower), Phaser, Bazooka and Buzzsaw
+  appear on 16 weapon sockets, plus Frag Packs.
+- **Sniper Post** — spawn with the Black Arrow + 3 Frags; only Black Arrows and Frag Packs spawn.
 
-Settings are stored at:
-- **Linux:** `~/.config/skyra/settings.json` (or `$XDG_CONFIG_HOME/skyra/settings.json`)
-- Can be overridden via the environment variable: `SKYRA_CONFIG_DIR=/path/to/dir`
+Both modes: unlimited respawns (2 s for Skyra, then 2 s of cloak — bots cannot see or hurt
+you), score = bots killed, carry at most two guns, the camera zooms out per weapon (1x
+Magnum … 5x Black Arrow), and a **Rocket Boost** (infinite jetpack, more speed for 10 s)
+drops 45 s into the match and again 35–50 s after each one is taken or expires, at the
+Beacon Crown or the Reactor Heart — never two at once. A Pacing Director lets at most two bots attack you at the same time.
 
-Settings are written atomically (`.tmp` + rename) with automatic corruption recovery.
+## Tests and tools
 
----
+```bash
+./tools/bin/godot --headless --path . -- --selftest                 # 114 tests, ~20 s, writes docs/TEST_REPORT.md
+./tools/bin/godot --headless --path . -- --selftest --only=test_ai  # one test file
+./tools/bin/godot --headless --path . -- --soak=180 --seed=1234 --bots=7 --mode=mini_post
+./tools/bin/godot --headless --path . -- --soak=120 --seed=99 --bots=5 --mode=sniper_post
+./tools/bin/godot --headless --path . -- --gen-sfx                  # re-synthesize assets/audio/generated/*.wav
+./tools/bin/godot --path . -- --bench                               # 30 s rendering benchmark (7 bots, VSync off)
+```
 
-## Game Modes
+`--bench` sweeps the camera over the whole map at 5x, then follows a bot fight around an
+invulnerable autopiloted Skyra, and writes the average / p99 frame time and FPS to
+`~/.local/share/skyra/bench.json` (exit code 0 when avg ≤ 16.6 ms and p99 ≤ 25 ms).
 
-1. **Mini Post**
-   - Spawn weapon: Magnum + 2 Frag Grenades
-   - 9 weapons distributed across map weapon sockets (W01–W16)
-   - Dynamic zoom (1x to 5x depending on equipped weapon)
-   - Rocket Boost power-up spawns every 45 s at Beacon Crown (B01) or Reactor Heart (B02)
-   - Pacing Director limits active attacking bots to at most 2 simultaneously
+Building a standalone Linux binary needs the Godot export templates (≈1 GB download):
 
-2. **Sniper Post**
-   - Spawn weapon: Black Arrow (M93BA) + 3 Frag Grenades
-   - Only Black Arrow rifles and Frag Packs spawn in sockets
-   - 5x fixed zoom with dynamic laser sight
-   - One-shot headshots
+```bash
+tools/install_export_templates.sh   # one-time download
+tools/build_linux.sh                # -> build/linux/Skyra.x86_64 (single file)
+tools/install_local.sh              # optional: install + menu entry for the current user
+tools/make_appimage.sh              # optional: AppImage when appimagetool is installed
+tools/fetch_fonts.sh                # optional: Russo One / Rajdhani fonts (OFL)
+```
 
----
+## Architecture
 
-## Architecture Overview
+- **Simulation** (`src/sim`, `src/physics`, `src/weapons`, `src/pickups`, `src/ai`): a
+  deterministic fixed 60 Hz `MatchSim` with custom AABB tile physics (step-up 34 wu, coyote
+  time 0.08 s, jump buffer 0.10 s), DDA grid raycasts, pooled projectiles, explosions with
+  exposure, and the bot AI (FSM, Pacing Director tokens, perception, aim model, time-sliced
+  A* on a nav grid, tactical queries).
+- **Views** (`src/view`): interpolated rendering — chunked map renderer, parallax sky,
+  landmarks, paper-doll character rig, SVG-rasterized weapon art, particles and screen FX.
+- **UI** (`src/ui`): code-built preset menu, HUD, pause / settings / summary screens.
+- **Audio** (`src/audio`): 5 buses (Master + limiter, SFX, SFX_Interior + reverb,
+  Ambient + low-pass, UI), voice pools, and an event router mapping game events to cues.
 
-- **Fixed-Tick Simulation:** 60 Hz fixed timestep (`MatchSim`) decoupled from rendering.
-- **Physics Engine:** Custom AABB grid collisions with step-up (12 px), coyote time (5 ticks), jump buffering (6 ticks), and zero Godot physics nodes used for simulation.
-- **Raycasting:** Amanatides-Woo Digital Differential Analyzer (DDA) grid traversal with sub-tile boundary hit normals.
-- **Pacing Director:** Orchestrates 5 pacing phases (`WARMUP`, `BUILD_UP`, `PEAK`, `RELAX`, `RESPAWN_GRACE`) with dynamic tokens to prevent bot swarming.
-- **Sound Engine:** 22,050 Hz 16-bit mono procedural audio synthesizer with 5 mixer buses (`Master` with Limiter, `SFX`, `SFX_Interior` with Reverb, `Ambient` with LowPass, `UI`).
-- **Visual FX:** 24 presets with pre-allocated `CPUParticles2D` emitter pools.
+The full specification is `docs/Skyra_Technical_Architecture.md`; intentional deviations
+are logged in `docs/DEVIATIONS.md`.

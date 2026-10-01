@@ -28,6 +28,23 @@ var pause_t: float = 0.0
 var continuous_ticks_left: int = 0
 var weapon_switch_cd: float = 0.0
 
+# Grenade intent (§5.6), decided at think rate and emitted on the next frame
+var pending_grenade: bool = false
+var pending_grenade_angle: float = 0.0
+var pending_grenade_speed: float = 1.0
+var human_slow_t: float = 0.0 # how long the visible Skyra has moved < 100 wu/s (camping)
+
+# Item seeking (§5.9)
+var sockets_ref: WeaponSocketManager = null
+var item_goal_active: bool = false
+var item_goal_pos: Vector2 = Vector2.ZERO
+var item_goal_id: StringName = &""
+
+# Path requests deferred by the per-tick A* budget
+var _tick: int = 0
+var _pending_path: bool = false
+var _pending_goal: Vector2 = Vector2.ZERO
+
 var rng: RandomNumberGenerator
 
 func _init(c: CharacterState, random_seed: int = 0) -> void:
@@ -46,6 +63,7 @@ func set_director_status(token: bool, new_role: int, self_def: bool) -> void:
 	is_self_defender = self_def
 
 func on_respawn() -> void:
+	_pending_path = false
 	state = Enums.BotState.PATROL
 	goal_pos = Vector2.ZERO
 	path_follower.clear()
@@ -60,8 +78,10 @@ func on_respawn() -> void:
 
 func step_tick(tick: int, dt: float, human: CharacterState, tile_grid: TileGrid,
                nav_grid: NavGrid, tac: TacticalQueries, director: PacingDirector,
-               loose_pickups: Array, now: float) -> InputFrame:
+               loose_pickups: Array, now: float, sockets: WeaponSocketManager = null) -> InputFrame:
 	var frame := InputFrame.new()
+	sockets_ref = sockets
+	_tick = tick
 
 	if bot.life_state != Enums.LifeState.ALIVE:
 		state = Enums.BotState.DEAD
@@ -69,10 +89,17 @@ func step_tick(tick: int, dt: float, human: CharacterState, tile_grid: TileGrid,
 		return frame
 
 	# Staggered 10 Hz perception and think (§5.2: tick % 6 == bot.id % 6)
+	if human and perception.sees_human and human.vel.length() < 100.0:
+		human_slow_t += dt
+	else:
+		human_slow_t = 0.0
+
 	var think_slot := (tick % 6 == bot.id % 6)
 	if think_slot:
 		perception.update(bot, human, tile_grid, now, rng)
 		_think_fsm(human, tile_grid, nav_grid, tac, director, loose_pickups, now)
+		_consider_items(human, nav_grid, tile_grid, loose_pickups)
+		_consider_grenade(human, tile_grid, director, now)
 
 	# Reaction time countdown
 	if perception.reaction_t > 0.0:
@@ -89,7 +116,9 @@ func step_tick(tick: int, dt: float, human: CharacterState, tile_grid: TileGrid,
 	repath_timer += dt
 	weapon_switch_cd = maxf(0.0, weapon_switch_cd - dt)
 
-	if path_follower.needs_repath or (repath_timer >= 1.0 and state == Enums.BotState.ENGAGE):
+	if _pending_path:
+		_request_path_to(_pending_goal, nav_grid, tile_grid)
+	elif path_follower.needs_repath or (repath_timer >= 1.0 and state == Enums.BotState.ENGAGE):
 		_request_path_to(goal_pos, nav_grid, tile_grid)
 		repath_timer = 0.0
 
@@ -103,6 +132,20 @@ func step_tick(tick: int, dt: float, human: CharacterState, tile_grid: TileGrid,
 	_apply_state_movement(frame, dt, human)
 	_apply_firing(frame, dt, human, tile_grid, director)
 	_check_weapon_handling(frame, dt, human, loose_pickups)
+
+	# Reached the item we were going for: take it (§5.9 "press pickup_swap within 60 wu")
+	if item_goal_active and bot.centre().distance_to(item_goal_pos) <= 60.0:
+		frame.pickup_pressed = true
+		item_goal_active = false
+		goal_timer = 99.0
+
+	if pending_grenade:
+		pending_grenade = false
+		frame.grenade_pressed = true
+		frame.grenade_released = true
+		frame.grenade_use_angle = true
+		frame.grenade_angle = pending_grenade_angle
+		frame.grenade_speed_mult = pending_grenade_speed
 
 	return frame
 
@@ -127,12 +170,21 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 		_pick_new_patrol(tac, nav_grid, tile_grid)
 		return
 
+	# Heading for a weapon item: keep going unless Skyra shows up or a token arrives
+	if item_goal_active and state in [Enums.BotState.PATROL, Enums.BotState.HOLD, Enums.BotState.FLANK] \
+			and not has_token and not perception.sees_human:
+		return
+	item_goal_active = false
+
 	# State-specific transition checks (§5.3 transition table)
 	match state:
 		Enums.BotState.PATROL:
 			if perception.sees_human:
 				state = Enums.BotState.TARGET_ACQUIRE
 				path_follower.clear()
+			elif has_token:
+				# F1: a token holder that cannot see Skyra paths toward her position
+				_hunt(human, nav_grid, tile_grid)
 			elif role == Enums.DirectorRole.FLANKER:
 				state = Enums.BotState.FLANK
 				_pick_flank_point(human, tac, director, nav_grid, tile_grid)
@@ -143,7 +195,11 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 				_pick_new_patrol(tac, nav_grid, tile_grid)
 
 		Enums.BotState.TARGET_ACQUIRE:
-			if perception.reaction_t <= 0.0:
+			if not perception.sees_human and (now - perception.last_seen_time) > 0.5:
+				# A3: lost sight early -> investigate the last known position
+				state = Enums.BotState.PATROL
+				_investigate(human, nav_grid, tile_grid)
+			elif perception.reaction_t <= 0.0:
 				if has_token and perception.sees_human:
 					state = Enums.BotState.ENGAGE
 					aim_model.t_track = 0.0
@@ -155,10 +211,6 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 						_pick_flank_point(human, tac, director, nav_grid, tile_grid)
 					else:
 						_pick_hold_point(human, tac, director, nav_grid, tile_grid)
-			elif not perception.sees_human and (now - perception.last_seen_time) > 0.5:
-				state = Enums.BotState.PATROL
-				goal_pos = perception.last_known_pos
-				_request_path_to(goal_pos, nav_grid, tile_grid)
 
 		Enums.BotState.ENGAGE:
 			if not has_token:
@@ -175,9 +227,9 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 				goal_pos = tac.retreat_point(bot, human, nav_grid, tile_grid)
 				_request_path_to(goal_pos, nav_grid, tile_grid)
 			elif (now - perception.last_seen_time) > 2.5:
+				# E4: unseen for 2.5 s -> hunt the last known position
 				state = Enums.BotState.PATROL
-				goal_pos = perception.last_known_pos
-				_request_path_to(goal_pos, nav_grid, tile_grid)
+				_investigate(human, nav_grid, tile_grid)
 			else:
 				_update_engage_goal(human)
 
@@ -197,8 +249,7 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 
 		Enums.BotState.FLANK:
 			if has_token:
-				state = Enums.BotState.TARGET_ACQUIRE
-				perception.reaction_t = 0.12 * (bot.profile.reaction_mult if bot.profile else 1.0)
+				_on_token_granted(human, nav_grid, tile_grid)
 			elif not path_follower.has_path() or bot.pos.distance_to(goal_pos) < 60.0:
 				state = Enums.BotState.HOLD
 			elif role == Enums.DirectorRole.PATROLLER:
@@ -207,14 +258,126 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 
 		Enums.BotState.HOLD:
 			if has_token:
-				state = Enums.BotState.TARGET_ACQUIRE
-				perception.reaction_t = 0.12 * (bot.profile.reaction_mult if bot.profile else 1.0)
+				_on_token_granted(human, nav_grid, tile_grid)
 			elif goal_timer >= 8.0 or perception.sees_human:
 				state = Enums.BotState.FLANK
 				_pick_flank_point(human, tac, director, nav_grid, tile_grid)
 			elif role == Enums.DirectorRole.PATROLLER:
 				state = Enums.BotState.PATROL
 				_pick_new_patrol(tac, nav_grid, tile_grid)
+
+## F1: token granted while flanking/holding -> acquire if Skyra is visible, else hunt her.
+func _on_token_granted(human: CharacterState, nav_grid: NavGrid, tile_grid: TileGrid) -> void:
+	if perception.sees_human:
+		state = Enums.BotState.TARGET_ACQUIRE
+		perception.reaction_t = 0.12 * (bot.profile.reaction_mult if bot.profile else 1.0)
+		path_follower.clear()
+	else:
+		state = Enums.BotState.PATROL
+		_hunt(human, nav_grid, tile_grid)
+
+## Token holders path toward Skyra's true position (the Director is omniscient, §5.4);
+## repathed every 1 s while she moves (§5.7.1 repath triggers).
+func _hunt(human: CharacterState, nav_grid: NavGrid, tile_grid: TileGrid) -> void:
+	if goal_kind == "hunt" and repath_timer < 1.0 and path_follower.has_path():
+		return
+	goal_kind = "hunt"
+	goal_pos = human.pos
+	goal_timer = 0.0
+	repath_timer = 0.0
+	_request_path_to(goal_pos, nav_grid, tile_grid)
+
+## PATROL goal priority (1): investigate the last known position if it is fresh.
+func _investigate(human: CharacterState, nav_grid: NavGrid, tile_grid: TileGrid) -> void:
+	if perception.last_known_pos.x > -9000.0:
+		goal_pos = perception.last_known_pos
+	else:
+		goal_pos = human.pos
+	goal_kind = "investigate"
+	goal_timer = 0.0
+	_request_path_to(goal_pos, nav_grid, tile_grid)
+
+## §5.9 weapon value: mode value x personality preference (0 without ammo).
+func weapon_value(def: WeaponDef, has_ammo: bool = true) -> float:
+	if def == null or not has_ammo:
+		return 0.0
+	var sniper := sockets_ref != null and sockets_ref.mode_id == "sniper_post"
+	var base := def.bot_value_sniper if sniper else def.bot_value_mini
+	var pref := float(bot.profile.weapon_pref.get(str(def.id), 1.0)) if bot.profile else 1.0
+	return base * pref
+
+func _best_held_value() -> float:
+	var best := 0.0
+	for w in bot.inventory.slots:
+		if w:
+			var has_ammo := w.clip > 0.0 or w.reserve > 0.0 or w.has_infinite_reserve()
+			best = maxf(best, weapon_value(w.def, has_ammo))
+	return best
+
+## §5.9 pickup decisions (PATROL / HOLD / FLANK): socket or loose weapons within 1200 wu
+## worth >= 10 more than the best held weapon, skipping items Skyra is closer to.
+func _consider_items(human: CharacterState, nav_grid: NavGrid, tile_grid: TileGrid, loose_pickups: Array) -> void:
+	if bot.life_state != Enums.LifeState.ALIVE or has_token:
+		item_goal_active = false
+		return
+	if not (state in [Enums.BotState.PATROL, Enums.BotState.HOLD, Enums.BotState.FLANK]):
+		item_goal_active = false
+		return
+	if item_goal_active:
+		if not _item_still_there(loose_pickups):
+			item_goal_active = false
+			goal_timer = 99.0
+		return
+	var held := _best_held_value()
+	var me := bot.centre()
+	var human_alive := human != null and human.life_state == Enums.LifeState.ALIVE
+	var best_gain := 9.999
+	var best_pos := Vector2.ZERO
+	var best_id := &""
+	var candidates: Array = []
+	if sockets_ref:
+		for s in sockets_ref.sockets:
+			if s.is_available and WeaponSocketManager.is_weapon_item(s.current_item) and Data.weapons.has(s.current_item):
+				candidates.append([Data.weapons[s.current_item], WeaponSocketManager.item_pos_of(s)])
+	for lw in loose_pickups:
+		var l := lw as LooseWeapon
+		if l and l.active and l.def:
+			candidates.append([l.def, l.centre()])
+	for cand in candidates:
+		var def: WeaponDef = cand[0]
+		var pos: Vector2 = cand[1]
+		var d := me.distance_to(pos)
+		if d > 1200.0:
+			continue
+		if human_alive and human.centre().distance_to(pos) < d:
+			continue # bots don't snatch items from under the player
+		var gain := weapon_value(def) - held
+		if bot.inventory.find(def.id) != -1:
+			gain = 0.0 # already held: merging ammo is not worth a detour
+		if gain > best_gain:
+			best_gain = gain
+			best_pos = pos
+			best_id = def.id
+	if best_id != &"":
+		item_goal_active = true
+		item_goal_pos = best_pos
+		item_goal_id = best_id
+		goal_pos = best_pos
+		goal_kind = "item"
+		goal_timer = 0.0
+		_request_path_to(goal_pos, nav_grid, tile_grid)
+
+func _item_still_there(loose_pickups: Array) -> bool:
+	if sockets_ref:
+		for s in sockets_ref.sockets:
+			if s.is_available and s.current_item == str(item_goal_id) and WeaponSocketManager.item_pos_of(s).distance_to(item_goal_pos) < 1.0:
+				return true
+	for lw in loose_pickups:
+		var l := lw as LooseWeapon
+		if l and l.active and l.def.id == item_goal_id and l.centre().distance_to(item_goal_pos) < 80.0:
+			item_goal_pos = l.centre()
+			return true
+	return false
 
 func _update_engage_goal(human: CharacterState) -> void:
 	var active_w := bot.inventory.active_weapon() if bot.inventory else null
@@ -255,29 +418,31 @@ func _pick_flank_point(human: CharacterState, tac: TacticalQueries, director: Pa
 	_request_path_to(goal_pos, nav_grid, tile_grid)
 
 func _request_path_to(target_pos: Vector2, nav_grid: NavGrid, tile_grid: TileGrid) -> void:
-	var start_cell := tile_grid.cell_of(bot.pos)
-	var end_cell := tile_grid.cell_of(target_pos)
+	# Feet sit exactly on the floor tile's top edge, so sample just above them.
+	var start_cell := nav_grid.nearest_node_cell(bot.pos + Vector2(0.0, -2.0))
+	var end_cell := nav_grid.nearest_node_cell(target_pos + Vector2(0.0, -2.0))
+	if start_cell.x < 0 or end_cell.x < 0:
+		path_follower.clear()
+		return
 
-	# Find closest nodes if outside
-	if not nav_grid.nodes.has(start_cell):
-		var best_d := 9999.0
-		for c in nav_grid.nodes:
-			var d: float = Vector2(start_cell).distance_to(Vector2(c))
-			if d < best_d:
-				best_d = d
-				start_cell = c
-
-	if not nav_grid.nodes.has(end_cell):
-		var best_d := 9999.0
-		for c in nav_grid.nodes:
-			var d: float = Vector2(end_cell).distance_to(Vector2(c))
-			if d < best_d:
-				best_d = d
-				end_cell = c
-
+	if nav_grid.async_enabled:
+		# Time-sliced A* (MatchSim): the path arrives within a few ticks
+		_pending_path = false
+		nav_grid.request_path(bot.id, start_cell, end_cell, not has_token, _on_path_ready.bind(nav_grid, tile_grid))
+		return
+	if not nav_grid.try_reserve_search(_tick):
+		_pending_path = true
+		_pending_goal = target_pos
+		return
+	_pending_path = false
 	var raw_path := nav_grid.find_path(start_cell, end_cell, not has_token, tile_grid)
 	var smoothed := nav_grid.smooth_path(raw_path, tile_grid)
 	path_follower.set_path(smoothed)
+
+func _on_path_ready(raw_path: Array[Vector2i], nav_grid: NavGrid, tile_grid: TileGrid) -> void:
+	if bot.life_state != Enums.LifeState.ALIVE:
+		return
+	path_follower.set_path(nav_grid.smooth_path(raw_path, tile_grid))
 
 func _apply_state_movement(frame: InputFrame, dt: float, human: CharacterState) -> void:
 	match state:
@@ -383,19 +548,37 @@ func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
 			if continuous_ticks_left <= 0:
 				pause_t = rng.randf_range(def.bot_pause_min, def.bot_pause_max) * cadence_mult
 
-	# Grenade check (§5.6 / §5.4.6 / INV-4)
-	if has_token and director.live_bot_grenades < 1 and bot.inventory.frag_count > 0:
-		var binfo: Dictionary = director.bot_data.get(bot.id, {})
-		var g_cooldown: float = float(binfo.get("grenade_cooldown", 0.0))
-		if g_cooldown <= 0.0 and d >= 350.0 and d <= 900.0:
-			var p_grenade := 0.3 * (bot.profile.grenade_affinity if bot.profile else 0.5)
-			if rng.randf() < p_grenade:
-				var solved := AimModel.solve_grenade_angle(bot.shoulder(), human.pos, tile_grid)
-				if bool(solved["success"]):
-					frame.grenade_pressed = true
-					frame.grenade_angle = float(solved["angle"])
-					binfo["grenade_cooldown"] = 10.0
-					director.live_bot_grenades += 1
+## §5.6 bot grenade throw, considered once per think tick by token holders only (§5.4.6):
+## 350–900 wu away and Skyra is camping (visible, < 100 wu/s for ≥ 1.5 s) or LOS was
+## lost < 2 s ago. INV-4: at most one live bot grenade in the world.
+func _consider_grenade(human: CharacterState, tile_grid: TileGrid, director: PacingDirector, now: float) -> void:
+	pending_grenade = false
+	if not has_token or director.live_bot_grenades >= 1 or bot.inventory.grenades <= 0:
+		return
+	if not human or human.life_state != Enums.LifeState.ALIVE or human.stealth_t > 0.0:
+		return
+	var binfo: Dictionary = director.bot_data.get(bot.id, {})
+	if float(binfo.get("grenade_cooldown", 0.0)) > 0.0:
+		return
+	var d := bot.pos.distance_to(human.pos)
+	if d < 350.0 or d > 900.0:
+		return
+	var camping := perception.sees_human and human_slow_t >= 1.5
+	var lost_recently := not perception.sees_human and (now - perception.last_seen_time) < 2.0
+	if not camping and not lost_recently:
+		return
+	var p_grenade := 0.3 * (bot.profile.grenade_affinity if bot.profile else 0.5)
+	if rng.randf() >= p_grenade:
+		return
+	var target := human.pos if perception.sees_human else perception.last_known_pos
+	var solved := AimModel.solve_grenade_angle(bot.shoulder(), target, tile_grid)
+	if not bool(solved["success"]):
+		return
+	pending_grenade = true
+	pending_grenade_angle = float(solved["angle"]) + deg_to_rad(rng.randf_range(-4.0, 4.0))
+	pending_grenade_speed = rng.randf_range(0.92, 1.08)
+	binfo["grenade_cooldown"] = 10.0
+	director.live_bot_grenades += 1
 
 func _check_weapon_handling(frame: InputFrame, dt: float, human: CharacterState, loose_pickups: Array) -> void:
 	if not bot.inventory:
@@ -416,14 +599,18 @@ func _check_weapon_handling(frame: InputFrame, dt: float, human: CharacterState,
 				frame.switch_pressed = true
 				weapon_switch_cd = 3.0
 
-	# Pickup handling within 60 wu
+	# Opportunistic pickup of a loose weapon within 60 wu, only when it is worth >= 10
+	# more than the best held weapon (§5.9) — otherwise a bot would keep re-taking the
+	# weapon it just swapped out.
+	var held := _best_held_value()
 	for p_obj in loose_pickups:
 		var p: LooseWeapon = p_obj as LooseWeapon
-		if p and p.active:
+		if p and p.active and p.def:
 			if bot.pos.distance_to(p.pos) <= 60.0:
 				# Rule §5.9 / T-AI-06: Never grab if Skyra is closer
 				var d_bot := bot.pos.distance_to(p.pos)
 				var d_human := human.pos.distance_to(p.pos) if (human and human.life_state == Enums.LifeState.ALIVE) else 9999.0
-				if d_bot < d_human:
+				var has_ammo := p.clip > 0.0 or p.reserve != 0.0
+				if d_bot < d_human and bot.inventory.find(p.def.id) == -1 and weapon_value(p.def, has_ammo) - held >= 10.0:
 					frame.pickup_pressed = true
 					break

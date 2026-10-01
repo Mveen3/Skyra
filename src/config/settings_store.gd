@@ -4,6 +4,8 @@ extends Node
 
 var data: SettingsData = null
 var _debounce_timer: Timer
+## A change is waiting for its debounced save (§1.3 T5 / T17 save on quit only if dirty).
+var _dirty: bool = false
 
 func _ready() -> void:
 	data = SettingsData.new()
@@ -104,12 +106,19 @@ func load_settings() -> void:
 	apply_all()
 
 func save_debounced() -> void:
+	_dirty = true
 	if _debounce_timer and _debounce_timer.is_inside_tree():
 		_debounce_timer.start()
 	else:
 		save_now()
 
+## Quit path (T5 / T17): flushes a pending change, otherwise leaves the file alone.
+func save_if_dirty() -> void:
+	if _dirty:
+		save_now()
+
 func save_now() -> void:
+	_dirty = false
 	if _debounce_timer and _debounce_timer.is_inside_tree():
 		_debounce_timer.stop()
 		

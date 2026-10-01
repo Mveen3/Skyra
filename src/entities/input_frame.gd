@@ -22,6 +22,8 @@ var grenade_pressed: bool = false
 var grenade_held: bool = false
 var grenade_released: bool = false
 var grenade_angle: float = 0.0
+var grenade_use_angle: bool = false # bots: throw at grenade_angle instead of the aim
+var grenade_speed_mult: float = 1.0
 var reload_pressed: bool = false
 var switch_pressed: bool = false
 var slot_select: int = -1
@@ -33,6 +35,7 @@ func clear_edges() -> void:
 	fire_pressed = false
 	grenade_pressed = false
 	grenade_released = false
+	grenade_use_angle = false
 	reload_pressed = false
 	switch_pressed = false
 	slot_select = -1
@@ -50,6 +53,9 @@ func copy_from(other: InputFrame) -> void:
 	grenade_pressed = other.grenade_pressed
 	grenade_held = other.grenade_held
 	grenade_released = other.grenade_released
+	grenade_angle = other.grenade_angle
+	grenade_use_angle = other.grenade_use_angle
+	grenade_speed_mult = other.grenade_speed_mult
 	reload_pressed = other.reload_pressed
 	switch_pressed = other.switch_pressed
 	slot_select = other.slot_select

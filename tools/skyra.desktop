@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Skyra
+Comment=Jetpack arena shooter - one sky outpost, ten weapons
+Exec=@EXEC@
+Icon=skyra
+Terminal=false
+Categories=Game;ActionGame;
+PrefersNonDefaultGPU=true

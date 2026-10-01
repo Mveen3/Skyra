@@ -9,6 +9,7 @@ var active_projectiles: Array[Projectile] = []
 var projectiles: Array[Projectile]:
 	get: return active_projectiles
 var next_id: int = 1
+var near_misses_this_tick: int = 0 # read and reset by MatchSim for the Director (§5.4.2)
 
 func _init() -> void:
 	for i in range(MAX_PROJECTILES):
@@ -108,10 +109,11 @@ func spawn_rocket(owner_id: int, owner_team: int, def: WeaponDef, start_pos: Vec
 	p.vel = p.dir * p.speed
 	p.accel = def.accel
 	p.max_speed = def.max_speed
-	p.radius = 8.0
-	p.damage = def.damage # direct hit bonus 25
+	p.radius = def.radius if def.radius > 0.0 else 8.0
+	p.damage = float(def.special.get("direct_hit_bonus", 25.0))
 	p.range_limit = def.max_range
-	p.lifetime = 3.0
+	p.lifetime = float(def.special.get("lifetime_s", 3.0))
+	p.explosion = def.special.get("explosion", {})
 	return p
 
 func spawn_saw(owner_id: int, owner_team: int, def: WeaponDef, start_pos: Vector2, angle: float) -> Projectile:
@@ -125,13 +127,14 @@ func spawn_saw(owner_id: int, owner_team: int, def: WeaponDef, start_pos: Vector
 	p.dir = Vector2(cos(angle), sin(angle)).normalized()
 	p.speed = def.speed
 	p.vel = p.dir * p.speed
-	p.radius = 14.0
-	p.damage = def.damage # 20 un-armed, 45 armed
+	p.radius = def.radius if def.radius > 0.0 else 14.0
+	p.damage = def.damage # 20 un-armed
+	p.armed_damage = float(def.special.get("armed_damage", 45.0))
 	p.knockback = def.knockback # 60
 	p.bounces_left = def.bounces # 4
 	p.bounce_speed_mult = def.bounce_speed_mult # 0.95
 	p.pierces_left = def.pierce_count # 2
-	p.lifetime = 2.2
+	p.lifetime = float(def.special.get("lifetime_s", 2.2))
 	p.armed = false
 	return p
 
@@ -144,9 +147,10 @@ func spawn_grenade(owner_id: int, owner_team: int, start_pos: Vector2, init_vel:
 	p.pos = start_pos
 	p.prev_pos = start_pos
 	p.vel = init_vel
-	p.radius = 8.0
-	p.fuse = 3.0
-	p.lifetime = 5.0
+	var g: GrenadeDef = Data.grenade
+	p.radius = g.radius if g else 10.0
+	p.fuse = g.fuse_s if g else 3.0
+	p.lifetime = p.fuse + 1.0
 	return p
 
 func spawn_flame_puff(owner_id: int, owner_team: int, start_pos: Vector2, dir_angle: float, shooter_vel: Vector2) -> Projectile:
@@ -227,19 +231,25 @@ func _step_straight(p: Projectile, dt: float, grid: TileGrid, characters: Array,
 		var hs_mult := p.headshot_mult if hs else 1.0
 		var amount := p.damage * p.calc_falloff(d) * hs_mult * p.pierce_mult
 
-		damage_system.queue_damage(c, p.owner_id, p.owner_team, p.weapon_id, amount, point, p.dir, hs)
+		damage_system.queue_damage(c, p.owner_id, p.owner_team, p.weapon_id, amount, point, p.dir, hs, false, 0.5, p.shot_id)
 		CharacterMotor.apply_impulse(c, p.dir, p.knockback)
 		p.hit_ids[c.id] = true
+		EventBus.projectile_impact.emit(p.kind, point, -p.dir, Enums.Surface.NONE, StringName(p.weapon_id), true, hs)
 
 		if p.pierces_left > 0:
 			p.pierces_left -= 1
 			p.pierce_mult *= p.pierce_damage_mult
 			continue
 		else:
+			p.pos = point
 			_despawn(p)
 			return
 
 	if wall.hit:
+		var wall_pt: Vector2 = wall["point"]
+		var wall_n: Vector2 = wall["normal"]
+		p.pos = wall_pt
+		EventBus.projectile_impact.emit(p.kind, wall_pt, wall_n, grid.surface_at(wall_pt - wall_n * 2.0), StringName(p.weapon_id), false, false)
 		_despawn(p)
 		return
 
@@ -254,7 +264,8 @@ func _step_straight(p: Projectile, dt: float, grid: TileGrid, characters: Array,
 				var q: Vector2 = Shapes.closest_point_on_segment(c.centre(), p.prev_pos, p.pos)
 				if c.centre().distance_to(q) < 64.0:
 					p.near_miss_checked = true
-					EventBus.near_miss.emit(c.id, p.pos)
+					near_misses_this_tick += 1
+					EventBus.near_miss.emit(c.id, q, p.speed)
 					break
 
 	if expire:
@@ -295,10 +306,13 @@ func _step_rocket(p: Projectile, dt: float, grid: TileGrid, characters: Array, d
 
 func _detonate_rocket(p: Projectile, centre: Vector2, hit_char: CharacterState, grid: TileGrid, characters: Array, damage_system: DamageSystem) -> void:
 	if hit_char:
-		# Direct hit bonus +25
-		damage_system.queue_damage(hit_char, p.owner_id, p.owner_team, p.weapon_id, 25.0, centre, p.dir)
+		# Direct hit bonus (+25)
+		damage_system.queue_damage(hit_char, p.owner_id, p.owner_team, p.weapon_id, p.damage, centre, p.dir, false, false, 0.5, p.shot_id)
 
-	ExplosionSystem.explode(centre, 220.0, 110.0, 20.0, 950.0, 0.5, p.owner_id, p.owner_team, p.weapon_id, grid, characters, damage_system)
+	var ex: Dictionary = p.explosion
+	p.pos = centre
+	ExplosionSystem.explode(centre, float(ex.get("radius", 220.0)), float(ex.get("max_damage", 110.0)), float(ex.get("min_damage", 20.0)),
+		float(ex.get("knockback", 950.0)), float(ex.get("self_damage_mult", 0.5)), p.owner_id, p.owner_team, p.weapon_id, grid, characters, damage_system, p.shot_id)
 	_despawn(p)
 
 func _step_circle(p: Projectile, dt: float, grid: TileGrid, characters: Array, damage_system: DamageSystem, now: float) -> void:
@@ -314,7 +328,8 @@ func _step_circle(p: Projectile, dt: float, grid: TileGrid, characters: Array, d
 
 		match p.kind:
 			Projectile.Kind.GRENADE:
-				var ay := -1200.0 if in_updraft else 1800.0
+				# §3.6: updrafts lift grenades by 1200 against gravity, so they still sink slowly
+				var ay := 1800.0 - 1200.0 if in_updraft else 1800.0
 				p.vel.y += ay * sdt
 			Projectile.Kind.FLAME_PUFF:
 				var ay := -600.0 if in_updraft else -200.0
@@ -357,15 +372,18 @@ func _step_circle(p: Projectile, dt: float, grid: TileGrid, characters: Array, d
 						p.vel = Vector2.ZERO
 						p.resting = true
 				Projectile.Kind.SAW_BLADE:
-					p.vel = p.vel - 2.0 * p.vel.dot(pen_normal) * pen_normal
-					p.vel *= p.bounce_speed_mult # 0.95
-					p.bounces_left -= 1
-					p.armed = true
-					EventBus.projectile_bounced.emit(p.pos, pen_normal)
-					if p.bounces_left < 0:
-						_despawn(p)
-						return
+					if p.vel.dot(pen_normal) < 0.0:
+						p.vel = p.vel - 2.0 * p.vel.dot(pen_normal) * pen_normal
+						p.vel *= p.bounce_speed_mult # 0.95
+						p.bounces_left -= 1
+						p.armed = true
+						if p.bounces_left < 0:
+							EventBus.projectile_impact.emit(p.kind, p.pos, pen_normal, grid.surface_at(p.pos - pen_normal * (p.radius + 2.0)), StringName(p.weapon_id), false, false)
+							_despawn(p)
+							return
+						EventBus.projectile_bounced.emit(p.kind, p.pos, pen_normal, p.vel.length())
 				Projectile.Kind.FLAME_PUFF:
+					EventBus.projectile_impact.emit(p.kind, p.pos, pen_normal, Enums.Surface.NONE, StringName(p.weapon_id), false, false)
 					_despawn(p)
 					return
 
@@ -380,9 +398,10 @@ func _step_circle(p: Projectile, dt: float, grid: TileGrid, characters: Array, d
 					var last_hit: float = p.last_hit_times.get(c.id, -99.0)
 					if (now - last_hit) >= 0.3:
 						p.last_hit_times[c.id] = now
-						var dmg := 45.0 if p.armed else 20.0
+						var dmg := p.armed_damage if p.armed else p.damage
 						var saw_dir := p.vel.normalized() if p.vel.length_squared() > 1e-4 else Vector2.RIGHT
-						damage_system.queue_damage(c, p.owner_id, p.owner_team, p.weapon_id, dmg, p.pos, saw_dir)
+						damage_system.queue_damage(c, p.owner_id, p.owner_team, p.weapon_id, dmg, p.pos, saw_dir, false, false, 0.5, p.shot_id)
+						EventBus.projectile_impact.emit(p.kind, p.pos, -saw_dir, Enums.Surface.NONE, StringName(p.weapon_id), true, false)
 						CharacterMotor.apply_impulse(c, saw_dir, p.knockback)
 						if not p.hit_ids.has(c.id):
 							p.hit_ids[c.id] = true
@@ -393,17 +412,23 @@ func _step_circle(p: Projectile, dt: float, grid: TileGrid, characters: Array, d
 				elif p.kind == Projectile.Kind.FLAME_PUFF:
 					if not p.hit_ids.has(c.id):
 						p.hit_ids[c.id] = true
-						damage_system.queue_damage(c, p.owner_id, p.owner_team, p.weapon_id, p.damage, p.pos, p.dir)
+						damage_system.queue_damage(c, p.owner_id, p.owner_team, p.weapon_id, p.damage, p.pos, p.dir, false, false, 0.5, p.shot_id)
 						damage_system.apply_burn(c, p.owner_id)
 
 	# Post-substep updates
+	if p.kind == Projectile.Kind.SAW_BLADE:
+		p.spin += deg_to_rad(1440.0) * dt
+	elif p.kind == Projectile.Kind.GRENADE and p.radius > 0.0:
+		p.spin += p.vel.x / p.radius * dt
 	if p.kind == Projectile.Kind.FLAME_PUFF:
 		p.radius = lerpf(10.0, 36.0, clampf(p.age / 0.52, 0.0, 1.0))
 
 	if p.kind == Projectile.Kind.GRENADE:
 		p.fuse -= dt
 		if p.fuse <= 0.0:
-			ExplosionSystem.explode(p.pos, 260.0, 120.0, 15.0, 1000.0, 0.5, p.owner_id, p.owner_team, "frag_grenade", grid, characters, damage_system)
+			var ex: Dictionary = Data.grenade.explosion if Data.grenade else {}
+			ExplosionSystem.explode(p.pos, float(ex.get("radius", 260.0)), float(ex.get("max_damage", 120.0)), float(ex.get("min_damage", 15.0)),
+				float(ex.get("knockback", 1000.0)), float(ex.get("self_damage_mult", 0.5)), p.owner_id, p.owner_team, "frag_grenade", grid, characters, damage_system)
 			_despawn(p)
 			return
 

@@ -53,6 +53,10 @@ var hit_ids: Dictionary = {}
 var last_hit_times: Dictionary = {}
 var near_miss_checked: bool = false
 var active: bool = false
+var shot_id: int = -1 # owner's shot counter, for the accuracy stat
+var armed_damage: float = 0.0 # Buzzsaw damage after its first bounce
+var spin: float = 0.0 # visual rotation (saw blades, grenades)
+var explosion: Dictionary = {}
 
 func reset() -> void:
 	id = 0
@@ -90,6 +94,10 @@ func reset() -> void:
 	last_hit_times.clear()
 	near_miss_checked = false
 	active = false
+	shot_id = -1
+	armed_damage = 0.0
+	spin = 0.0
+	explosion = {}
 
 func calc_falloff(d: float) -> float:
 	if falloff_start <= 0.0 or falloff_end <= falloff_start:

@@ -1,41 +1,43 @@
-# Implements §7.11 / §9.6 CueLibrary: cue resolution and caching.
+# Implements §7.11 / §9.6 CueLibrary: cue id -> AudioStream. Lookup order: optional
+# override (assets/overrides/audio) -> committed generated WAV -> synthesized on the fly.
+# Loop cues get LOOP_FORWARD over their full length (imported WAVs carry no loop points).
 class_name CueLibrary
 extends RefCounted
 
 static var _cache: Dictionary = {}
 
-static func get_stream(cue_id: StringName) -> AudioStreamWAV:
+static func get_stream(cue_id: StringName) -> AudioStream:
 	if _cache.has(cue_id):
 		return _cache[cue_id]
+	var recipe: Dictionary = Data.cues.get(str(cue_id), {})
+	var stream: AudioStream = null
 
-	# 1. Check committed generated wav
-	var gen_path: String = "res://assets/audio/generated/%s.wav" % str(cue_id)
-	if FileAccess.file_exists(gen_path):
-		var s = load(gen_path)
-		if s is AudioStreamWAV:
-			_cache[cue_id] = s
-			return s
+	for path in ["res://assets/overrides/audio/%s.ogg" % str(cue_id), "res://assets/overrides/audio/%s.wav" % str(cue_id),
+			"res://assets/audio/generated/%s.wav" % str(cue_id)]:
+		if ResourceLoader.exists(path):
+			var s = load(path)
+			if s is AudioStream:
+				stream = s
+				break
 
-	# 2. Check user sfx cache
-	var user_path: String = "user://sfx_cache/%s.wav" % str(cue_id)
-	if FileAccess.file_exists(user_path):
-		var s = load(user_path)
-		if s is AudioStreamWAV:
-			_cache[cue_id] = s
-			return s
+	if stream == null and not recipe.is_empty():
+		stream = SfxSynth.render(recipe)
 
-	# 3. Synthesize on the fly from recipe
-	var cues_dict: Dictionary = Data.cues
-	var recipe: Dictionary = cues_dict.get(str(cue_id), {})
-	if recipe.is_empty():
-		recipe = cues_dict.get(cue_id, {})
+	if stream != null and bool(recipe.get("loop", false)):
+		_make_loop(stream)
+	if stream != null:
+		_cache[cue_id] = stream
+	return stream
 
-	if not recipe.is_empty():
-		var synthesized: AudioStreamWAV = SfxSynth.render(recipe)
-		_cache[cue_id] = synthesized
-		return synthesized
-
-	return null
+static func _make_loop(stream: AudioStream) -> void:
+	if stream is AudioStreamWAV:
+		var w := stream as AudioStreamWAV
+		if w.loop_mode == AudioStreamWAV.LOOP_DISABLED:
+			w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			w.loop_begin = 0
+			w.loop_end = int(round(w.get_length() * float(w.mix_rate)))
+	elif stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
 
 static func preload_cues(cues: Array) -> void:
 	for c in cues:

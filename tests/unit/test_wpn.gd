@@ -227,6 +227,12 @@ func test_wpn_08_phaser() -> void:
 	bot2.is_human = false
 	bot2.pos = Vector2(900, 500)
 
+	# Aim at the bots' bodies. The beam starts at the barrel tip (§4.4 muzzle point), 9 wu
+	# above the grip, so a perfectly level shoulder-height aim would cross their head zones.
+	var aim := (bot1.centre() - human.shoulder()).normalized()
+	human.aim_dir = aim
+	human.aim_angle = aim.angle()
+
 	var frame := InputFrame.new()
 	frame.fire_held = true
 

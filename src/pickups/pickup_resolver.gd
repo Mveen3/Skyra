@@ -1,6 +1,9 @@
-# Implements §4.10.3 Pickup resolution engine.
+# Implements §4.10.3 Pickup resolution engine: Frag Pack touch pickup and the
+# E-key take / merge / swap rules for weapon items within reach.
 class_name PickupResolver
 extends RefCounted
+
+const PICKUP_REACH: float = 72.0
 
 static func try_collect_frag_pack(c: CharacterState, item_pos: Vector2, item_size: Vector2 = Vector2(40, 40)) -> bool:
 	if not c or c.life_state != Enums.LifeState.ALIVE:
@@ -16,62 +19,69 @@ static func try_collect_frag_pack(c: CharacterState, item_pos: Vector2, item_siz
 		return true
 	return false
 
-static func try_pickup_weapon(c: CharacterState, item_def: WeaponDef, item_clip: int,
-                             item_reserve: int, item_pos: Vector2,
-                             loose_weapons: Array) -> bool:
+## Returns what pressing E on `item_def` would do: &"take", &"merge" or &"swap".
+static func pickup_action(c: CharacterState, item_def: WeaponDef) -> StringName:
+	var inv: Inventory = c.inventory
+	for i in range(2):
+		var held: WeaponInstance = inv.slots[i]
+		if held and held.def.id == item_def.id:
+			return &"merge"
+	if inv.empty_slot() != -1:
+		return &"take"
+	return &"swap"
+
+static func try_pickup_weapon(c: CharacterState, item_def: WeaponDef, item_clip: float,
+                             item_reserve: float, item_pos: Vector2,
+                             loose_weapons: Array, socket_id: StringName = &"") -> bool:
 	if not c or c.life_state != Enums.LifeState.ALIVE:
 		return false
 	var inv: Inventory = c.inventory
 	if not inv:
 		return false
 
-	if c.centre().distance_to(item_pos) > 72.0:
+	if c.centre().distance_to(item_pos) > PICKUP_REACH:
 		return false
 
-	# 1. Merge check (same ID held in either slot)
+	# 1. Merge check (same ID held in either slot): clip + reserve go to the reserve
 	for i in range(2):
 		var held: WeaponInstance = inv.slots[i]
 		if held and held.def.id == item_def.id:
 			if held.def.max_reserve != -1:
-				held.reserve = mini(held.def.max_reserve, held.reserve + item_clip + item_reserve)
-			EventBus.weapon_picked_up.emit(c.id, item_def.id, &"")
+				held.reserve = minf(float(held.def.max_reserve), held.reserve + item_clip + item_reserve)
+			EventBus.weapon_picked_up.emit(c.id, item_def.id, socket_id)
 			return true
 
-	# 2. Empty slot check
-	var empty_idx := -1
-	for i in range(2):
-		if inv.slots[i] == null:
-			empty_idx = i
-			break
-
+	# 2. Empty slot: put it there and make it active
+	var empty_idx := inv.empty_slot()
 	if empty_idx != -1:
 		var new_w := WeaponInstance.new(item_def)
 		new_w.clip = item_clip
 		new_w.reserve = item_reserve
 		inv.set_weapon(empty_idx, new_w)
-		inv.set_active_slot(empty_idx)
-		EventBus.weapon_picked_up.emit(c.id, item_def.id, &"")
+		inv.set_active_slot(empty_idx, true)
+		EventBus.weapon_picked_up.emit(c.id, item_def.id, socket_id)
 		return true
 
-	# 3. Swap with active weapon
+	# 3. Swap: the active weapon drops at the item position with its exact ammo state
 	var active_w: WeaponInstance = inv.active_weapon()
 	if active_w:
-		# Spawn loose weapon with dropped weapon's ammo
 		var dropped := LooseWeapon.new()
 		dropped.def = active_w.def
 		dropped.clip = active_w.clip
 		dropped.reserve = active_w.reserve
 		dropped.pos = item_pos
+		dropped.prev_pos = item_pos
+		dropped.facing = c.facing
 		loose_weapons.append(dropped)
+		EventBus.weapon_dropped.emit(c.id, active_w.def.id, item_pos)
 
-		# New weapon replaces active slot
 		var new_w := WeaponInstance.new(item_def)
 		new_w.clip = item_clip
 		new_w.reserve = item_reserve
 		new_w.state = Enums.WeaponState.SWITCHING
 		new_w.state_t = item_def.switch_s
 		inv.slots[inv.active_slot] = new_w
-		EventBus.weapon_picked_up.emit(c.id, item_def.id)
+		EventBus.weapon_picked_up.emit(c.id, item_def.id, socket_id)
 		return true
 
 	return false

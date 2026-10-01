@@ -9,9 +9,13 @@ var duration: int = 7
 var rng_seed: int = 0
 var has_seed: bool = false
 var selftest: bool = false
+var test_filter: String = ""
+var run_script: String = ""
+var drive: String = ""
 var soak: int = 0
 var gen_sfx: bool = false
 var bench: bool = false
+var bench_s: int = 30
 var windowed: bool = false
 var log_level: String = "info"
 
@@ -36,6 +40,9 @@ static func parse() -> CliArgs:
 			args.gen_sfx = true
 		elif a == "--bench":
 			args.bench = true
+		elif a.begins_with("--bench="):
+			args.bench = true
+			args.bench_s = maxi(1, a.substr(8).to_int())
 		elif a == "--windowed":
 			args.windowed = true
 		elif a.begins_with("--mode="):
@@ -51,5 +58,11 @@ static func parse() -> CliArgs:
 			args.soak = a.substr(7).to_int()
 		elif a.begins_with("--log-level="):
 			args.log_level = a.substr(12)
+		elif a.begins_with("--only="):
+			args.test_filter = a.substr(7)
+		elif a.begins_with("--run-script="):
+			args.run_script = a.substr(13)
+		elif a.begins_with("--drive="):
+			args.drive = a.substr(8)
 			
 	return args

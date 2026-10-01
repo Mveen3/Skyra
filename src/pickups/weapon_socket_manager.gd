@@ -13,6 +13,21 @@ class SocketState:
 var sockets: Array[SocketState] = []
 var mode_id: String = "mini_post"
 
+## Weapon items float above the pedestal; Frag Packs sit on it (§4.11 visuals).
+const WEAPON_ITEM_LIFT: float = 26.0
+const FRAG_PACK_LIFT: float = 20.0
+
+static func item_pos_of(s: SocketState) -> Vector2:
+	var lift := FRAG_PACK_LIFT if s.current_item == "frag_pack" else WEAPON_ITEM_LIFT
+	return s.def.world + Vector2(0.0, -lift)
+
+static func is_weapon_item(item_id: String) -> bool:
+	return not item_id.is_empty() and item_id != "frag_pack"
+
+## Socket items are fresh weapons: full clip + spawn reserve.
+static func fresh_ammo(def: WeaponDef) -> Vector2:
+	return Vector2(float(def.clip_size), float(def.spawn_reserve))
+
 func init_sockets(map_data: MapData, selected_mode: String, rng: RandomNumberGenerator) -> void:
 	setup(map_data.sockets, selected_mode, rng)
 

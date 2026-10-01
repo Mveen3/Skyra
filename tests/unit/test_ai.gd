@@ -184,6 +184,8 @@ func test_ai_06_fair_pickups() -> void:
 	var loose_item := LooseWeapon.new()
 	loose_item.id = 1
 	loose_item.def = Data.weapons["ak47"]
+	loose_item.clip = 30 # §5.9: a weapon without ammo is worth 0, so give it a full magazine
+	loose_item.reserve = 90
 	loose_item.pos = Vector2(800, 1000) # distance to bot = 300, distance to human = 100
 	loose_item.active = true
 

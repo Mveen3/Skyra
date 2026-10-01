@@ -75,11 +75,17 @@ static func calculate_rank(kills: int, deaths: int, duration_minutes: float) -> 
 		"score": score
 	}
 
-func register_kill(killer: CharacterState, victim: CharacterState, weapon_id: StringName, dist: float = 0.0) -> Dictionary:
+## Scores one kill (§8.4 streaks, §8.5.3 stats). A suicide (killer == victim) only counts
+## as a death. When `ev` is given, its killer_streak / multi_kill_count are filled in for
+## the HUD banner and the multi-kill sting.
+func register_kill(killer: CharacterState, victim: CharacterState, weapon_id: StringName, dist: float = 0.0, ev: KillEvent = null) -> Dictionary:
 	var result := {
 		"multi_kill_label": "",
 		"streak_label": ""
 	}
+
+	if killer == victim:
+		killer = null
 
 	if killer:
 		if not killer.stats:
@@ -109,6 +115,10 @@ func register_kill(killer: CharacterState, victim: CharacterState, weapon_id: St
 		if victim and victim.is_human and not killer.is_human:
 			killer.stats.kills_on_human += 1
 
+		if ev:
+			ev.killer_streak = killer.streak
+			ev.multi_kill_count = killer.multi_kill_count
+
 	if victim:
 		if not victim.stats:
 			victim.stats = CombatStats.new()
@@ -116,7 +126,6 @@ func register_kill(killer: CharacterState, victim: CharacterState, weapon_id: St
 		victim.streak = 0
 		victim.multi_kill_count = 0
 		victim.multi_kill_t = 0.0
-		victim.boost_t = 0.0
 
 	return result
 

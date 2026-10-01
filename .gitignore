@@ -5,3 +5,6 @@ tools/bin/
 *.corrupt-*
 *.bak
 .sfx_cache/
+
+# Local scratch probes
+tests/scratch/

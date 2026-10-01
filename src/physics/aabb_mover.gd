@@ -71,9 +71,11 @@ static func move(c: Object, delta: Vector2, grid: TileGrid, dt: float, half_w: f
 			c.vel.y = 0.0
 			c.grounded = true
 			c.ground_is_one_way = (ow_candidate != null and top == ow_top and ow_top < top + 0.01)
-			if landing_speed > 700.0:
-				var srf := grid.surface_at(c.pos)
-				EventBus.character_landed.emit(c.id, landing_speed, srf)
+			if c is CharacterState:
+				c.landing_speed = landing_speed
+				if landing_speed > 700.0:
+					var srf := grid.surface_at(c.pos + Vector2(0.0, 1.0))
+					EventBus.character_landed.emit(c.id, landing_speed, srf)
 		else:
 			c.pos.y = new_feet
 			c.grounded = false

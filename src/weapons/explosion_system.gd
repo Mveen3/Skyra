@@ -21,7 +21,7 @@ static func is_eligible(owner_id: int, owner_team: int, c: CharacterState) -> bo
 static func explode(centre: Vector2, radius: float, max_dmg: float, min_dmg: float,
                     kb: float, self_mult: float, owner_id: int, owner_team: int,
                     weapon_id: String, grid: TileGrid, characters: Array,
-                    damage_system: DamageSystem) -> void:
+                    damage_system: DamageSystem, shot_id: int = -1) -> void:
 	for obj in characters:
 		var c: CharacterState = obj as CharacterState
 		if not is_eligible(owner_id, owner_team, c):
@@ -53,7 +53,7 @@ static func explode(centre: Vector2, radius: float, max_dmg: float, min_dmg: flo
 		var amount := lerpf(max_dmg, min_dmg, frac) * exposure
 		var imp_dir := upward_biased_dir(centre, c.centre())
 
-		damage_system.queue_damage(c, owner_id, owner_team, weapon_id, amount, centre, imp_dir, false, true, self_mult)
+		damage_system.queue_damage(c, owner_id, owner_team, weapon_id, amount, centre, imp_dir, false, true, self_mult, shot_id)
 		CharacterMotor.apply_impulse(c, imp_dir, kb * (1.0 - frac) * exposure)
 
 	var evt := ExplosionEvent.new()

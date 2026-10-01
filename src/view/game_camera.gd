@@ -29,12 +29,14 @@ var noise1: FastNoiseLite = null
 var noise2: FastNoiseLite = null
 var noise3: FastNoiseLite = null
 
+var sim: MatchSim = null
 var is_human_alive: bool = true
 var death_pos: Vector2 = Vector2.ZERO
 var s_at_death: float = 1.0
 var lookahead_enabled: bool = true
 
 func _init() -> void:
+	ignore_rotation = false
 	noise1 = FastNoiseLite.new()
 	noise1.seed = 101
 	noise1.noise_type = FastNoiseLite.TYPE_SIMPLEX
@@ -113,14 +115,66 @@ func on_human_respawn(spawn_pos: Vector2, scope: float) -> void:
 	lookahead_enabled = true
 	snap_to(spawn_pos, scope)
 
-func update_camera(delta: float, human_state: CharacterState, mouse_screen_pos: Vector2) -> void:
+## Wires the §3.10.6 trauma sources and the §3.10.3 death / respawn behaviours.
+func bind_sim(p_sim: MatchSim) -> void:
+	sim = p_sim
+	EventBus.weapon_fired.connect(_on_weapon_fired)
+	EventBus.character_damaged.connect(_on_damaged)
+	EventBus.explosion.connect(_on_explosion)
+	EventBus.character_landed.connect(_on_landed)
+	EventBus.rocket_boost_collected.connect(_on_boost)
+	EventBus.character_killed.connect(_on_killed)
+	EventBus.character_spawned.connect(_on_spawned)
+
+func _on_weapon_fired(id: int, weapon_id: StringName, _m: Vector2, _d: Vector2) -> void:
+	if id == 0 and Data.weapons.has(weapon_id):
+		add_trauma((Data.weapons[weapon_id] as WeaponDef).camera_trauma)
+
+func _on_damaged(ev: DamageEvent) -> void:
+	if ev.target_id == 0:
+		add_trauma(0.12 + ev.amount / 250.0)
+
+func _on_explosion(ev: ExplosionEvent) -> void:
+	if sim:
+		var d := ev.pos.distance_to(sim.human_char.centre())
+		add_trauma(0.6 * clampf(1.0 - d / 900.0, 0.0, 1.0))
+
+func _on_landed(id: int, speed: float, _surface: int) -> void:
+	if id == 0 and speed > 900.0:
+		add_trauma(0.10)
+
+func _on_boost(by_id: int, _duration: float) -> void:
+	if by_id == 0:
+		add_trauma(0.20)
+
+func _on_killed(ev: KillEvent) -> void:
+	if ev.victim_id == 0 and sim:
+		var h := sim.human_char
+		on_human_death(h.death_pos, 1.0 / (curr_zoom * curr_zoom))
+
+func _on_spawned(id: int, pos: Vector2, _initial: bool) -> void:
+	if id == 0 and sim:
+		var w := sim.human_char.inventory.active_weapon()
+		on_human_respawn(pos, w.def.scope if w else 1.0)
+
+## Camera view rectangle in world space (spawn rules, off-screen indicators).
+func view_rect_world() -> Rect2:
+	var vp := get_viewport_rect().size if get_viewport() else DESIGN_VP
+	var half := vp * 0.5 / curr_zoom
+	return Rect2(curr_cam_pos - half, half * 2.0)
+
+## Effective scope while the zoom glides (§3.10.2 S_now).
+func scope_now() -> float:
+	return 1.0 / (curr_zoom * curr_zoom)
+
+func update_camera(delta: float, human_state: CharacterState, mouse_screen_pos: Vector2, render_pos: Vector2 = Vector2.INF) -> void:
 	var scope_target: float
 	var focus_pos: Vector2
-	if is_human_alive and human_state:
+	if is_human_alive and human_state and human_state.life_state == Enums.LifeState.ALIVE:
 		var inv: Inventory = human_state.inventory
 		var w: WeaponInstance = inv.active_weapon() if inv else null
 		scope_target = w.def.scope if w else 1.0
-		focus_pos = human_state.pos
+		focus_pos = render_pos if render_pos != Vector2.INF else human_state.pos
 	else:
 		scope_target = s_at_death
 		focus_pos = death_pos
@@ -129,14 +183,14 @@ func update_camera(delta: float, human_state: CharacterState, mouse_screen_pos: 
 	curr_zoom = target_zoom + (curr_zoom - target_zoom) * exp(-ZOOM_LAMBDA * delta)
 
 	var vp := get_viewport_rect().size if get_viewport() else DESIGN_VP
-	var scope_now := 1.0 / (curr_zoom * curr_zoom)
-	target_cam_pos = compute_target(focus_pos, mouse_screen_pos, vp, curr_zoom, scope_now, lookahead_enabled)
+	var scope_now_v := 1.0 / (curr_zoom * curr_zoom)
+	target_cam_pos = compute_target(focus_pos, mouse_screen_pos, vp, curr_zoom, scope_now_v, lookahead_enabled)
 
 	curr_cam_pos = target_cam_pos + (curr_cam_pos - target_cam_pos) * exp(-POS_LAMBDA * delta)
 	global_position = curr_cam_pos
 	zoom = Vector2(curr_zoom, curr_zoom)
 
-	# Screen shake
+	# Screen shake (trauma model, §3.10.6)
 	if trauma > 0.0:
 		noise_time += delta * NOISE_HZ
 		var shake := trauma * trauma

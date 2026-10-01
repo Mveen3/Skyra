@@ -22,6 +22,7 @@ var staging_ring_max: float = 1700.0
 var bubble_radius: float = 900.0
 
 var accum: float = 0.0
+var grace_clear_t: float = 0.0 # time Skyra has been alive and un-stealthed during RESPAWN_GRACE
 
 func _init(mode: String = "mini_post") -> void:
 	mode_id = mode
@@ -72,6 +73,8 @@ func register_human_death() -> void:
 	intensity = 0.0
 	phase = Enums.PacingPhase.RESPAWN_GRACE
 	phase_timer = 0.0
+	grace_clear_t = 0.0
+	_update_staging_ring()
 	for bid in bot_data:
 		bot_data[bid]["has_token"] = false
 		bot_data[bid]["token_t"] = 0.0
@@ -197,11 +200,15 @@ func step(dt: float, bots: Array, human: CharacterState, now: float) -> void:
 				phase = Enums.PacingPhase.BUILD_UP
 				phase_timer = 0.0
 		Enums.PacingPhase.RESPAWN_GRACE:
+			# Leave 1.0 s after Skyra's post-respawn stealth has ended (§5.4.1)
 			if human and human.life_state == Enums.LifeState.ALIVE and human.stealth_t <= 0.0:
-				if phase_timer >= 1.0:
+				grace_clear_t += step_dt
+				if grace_clear_t >= 1.0:
 					phase = Enums.PacingPhase.BUILD_UP
 					phase_timer = 0.0
 					post_grace_ramp_timer = 2.5 # cap tokens at 1 for first 2.5 s
+			else:
+				grace_clear_t = 0.0
 
 	if phase != prev_phase:
 		_update_staging_ring()
