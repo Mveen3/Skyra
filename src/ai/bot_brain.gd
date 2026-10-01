@@ -21,6 +21,10 @@ var repath_timer: float = 0.0
 var strafe_dir: float = 1.0
 var strafe_t: float = 0.0
 var jet_hop_t: float = 0.0
+# HOLD shuffles (§5.3: ±32 wu every 2–3 s)
+var shuffle_t: float = 2.0
+var shuffle_move_t: float = 0.0
+var shuffle_dir: int = 1
 
 # Cadence timers
 var burst_shots_left: int = 0
@@ -487,6 +491,18 @@ func _apply_state_movement(frame: InputFrame, dt: float, human: CharacterState) 
 					jet_hop_t -= dt
 					frame.jet_held = true
 
+		Enums.BotState.HOLD:
+			# Small shuffles on the staging point once it is reached (~32 wu at run speed)
+			if not path_follower.has_path() and bot.grounded:
+				shuffle_t -= dt
+				if shuffle_t <= 0.0:
+					shuffle_t = rng.randf_range(2.0, 3.0)
+					shuffle_move_t = 0.12
+					shuffle_dir = -shuffle_dir if rng.randf() < 0.7 else shuffle_dir
+				if shuffle_move_t > 0.0:
+					shuffle_move_t -= dt
+					frame.move_x = shuffle_dir
+
 		Enums.BotState.RETREAT_RELOAD:
 			frame.reload_pressed = true
 
@@ -540,7 +556,8 @@ func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
 	if def.id == "rocket_launcher" and d < 280.0:
 		return
 
-	var angle_diff := rad_to_deg(absf(angle_difference(bot.aim_angle, (human.centre() - bot.shoulder()).angle())))
+	# §5.6 fire gate: the aim has caught up with its goal (true direction + aim error)
+	var angle_diff := rad_to_deg(absf(angle_difference(bot.aim_angle, aim_model.aim_goal)))
 	if angle_diff > def.bot_fire_gate_deg:
 		return
 

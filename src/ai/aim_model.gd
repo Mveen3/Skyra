@@ -9,6 +9,7 @@ var wander_t: float = 0.0
 var e_target: float = 0.0
 var e_current: float = 0.0
 var aim_head: bool = false
+var aim_goal: float = 0.0 # desired angle + wandering error (§5.6); the fire gate compares against it
 
 func reset() -> void:
 	t_track = 0.0
@@ -78,7 +79,7 @@ func update(bot: CharacterState, human: CharacterState, dt: float,
 	var blend := 1.0 - exp(-6.0 * dt)
 	e_current = lerpf(e_current, e_target, blend)
 
-	var aim_goal := desired + e_current
+	aim_goal = desired + e_current
 
 	# Max turn rate: 300 deg/s for Black Arrow, 420 deg/s for others
 	var max_turn_deg := 300.0 if (w_id == "m93ba") else 420.0
