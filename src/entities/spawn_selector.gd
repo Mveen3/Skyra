@@ -34,7 +34,13 @@ static func select_human_spawn(sockets: Array, bots: Array, last_death_pos: Vect
 			var r1: Dictionary = tile_grid.raycast(shoulder, sock_centre, C.MASK_LOS)
 			var r2: Dictionary = tile_grid.raycast(shoulder, sock_centre + Vector2(0, 30), C.MASK_LOS)
 			var r3: Dictionary = tile_grid.raycast(shoulder, sock_centre + Vector2(0, -30), C.MASK_LOS)
-			if (not bool(r1["hit"]) or not bool(r2["hit"]) or not bool(r3["hit"])) and d <= 1400.0:
+			# Visible = a clear ray and within the bot's perception radius (§5.5, §6.7)
+			var aw := b.inventory.active_weapon() if b.inventory else null
+			var vis_r := 1400.0 * sqrt(aw.def.scope if aw else 1.0)
+			var sdx := sock_centre.x - b.pos.x
+			if signf(sdx) != float(b.facing) and absf(sdx) > 1.0:
+				vis_r *= 0.6
+			if (not bool(r1["hit"]) or not bool(r2["hit"]) or not bool(r3["hit"])) and d <= vis_r:
 				seen_by += 1
 
 		var near_death: bool = sock.pos.distance_to(last_death_pos) < 1200.0 if last_death_pos.x > -9000.0 else false
