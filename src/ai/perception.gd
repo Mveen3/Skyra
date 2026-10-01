@@ -6,6 +6,7 @@ var bot_id: int = 0
 var bot_team: int = Enums.Team.BOT
 var last_known_pos: Vector2 = Vector2(-9999, -9999)
 var last_seen_time: float = -999.0
+var last_heard_time: float = -999.0
 var sees_human: bool = false
 var reaction_t: float = 0.0
 var recently_seen: bool = false
@@ -16,31 +17,37 @@ func _init(id: int = 0) -> void:
 func clear_memory() -> void:
 	last_known_pos = Vector2(-9999, -9999)
 	last_seen_time = -999.0
+	last_heard_time = -999.0
 	sees_human = false
 	reaction_t = 0.0
 	recently_seen = false
 
+## Memory (§5.5): the last known position is kept for 8.0 s after it was seen or heard.
 func has_known_target(now: float) -> bool:
-	return (now - last_seen_time) <= 8.0 and last_known_pos.x > -9000
+	return (now - maxf(last_seen_time, last_heard_time)) <= 8.0 and last_known_pos.x > -9000
 
-func get_hearing_radius(weapon_id: String) -> float:
-	match weapon_id:
-		"m93ba", "rocket_launcher", "frag_grenade":
+## §5.5 hearing radii: Black Arrow, Bazooka and explosions 2600; Blaze and Phaser 1200;
+## every other gun 1800.
+static func hearing_radius(source_id: StringName) -> float:
+	match str(source_id):
+		"m93ba", "rocket_launcher", "explosion":
 			return 2600.0
-		"blaze", "phasr", "flamethrower":
+		"flamethrower", "phasr":
 			return 1200.0
 		_:
 			return 1800.0
 
-func on_sound_heard(sound_pos: Vector2, weapon_id: String, now: float, rng: RandomNumberGenerator, human_stealthed: bool) -> void:
-	if human_stealthed:
-		return
-	var r := get_hearing_radius(weapon_id)
-	if sound_pos.distance_to(last_known_pos) <= r or sound_pos.distance_to(sound_pos) <= r:
-		var angle := rng.randf_range(0.0, TAU)
-		var dist := rng.randf_range(0.0, 150.0)
-		last_known_pos = sound_pos + Vector2(cos(angle), sin(angle)) * dist
-		last_seen_time = now
+## §5.5 hearing: a shot or explosion by Skyra within the listener's hearing radius sets
+## `last_known_pos` to the source plus a uniform offset in a 150-wu disc (no LOS needed).
+## The caller never reports sounds while Skyra is stealthed (§3.13).
+func hear(listener_pos: Vector2, source_pos: Vector2, source_id: StringName, now: float, rng: RandomNumberGenerator) -> bool:
+	if listener_pos.distance_to(source_pos) > hearing_radius(source_id):
+		return false
+	var angle := rng.randf_range(0.0, TAU)
+	var dist := 150.0 * sqrt(rng.randf())
+	last_known_pos = source_pos + Vector2(cos(angle), sin(angle)) * dist
+	last_heard_time = now
+	return true
 
 func update(bot: CharacterState, human: CharacterState, tile_grid: TileGrid, now: float, rng: RandomNumberGenerator) -> void:
 	if not human or human.life_state != Enums.LifeState.ALIVE or human.stealth_t > 0.0:
@@ -48,7 +55,7 @@ func update(bot: CharacterState, human: CharacterState, tile_grid: TileGrid, now
 		return
 
 	# Forget after 8.0 s
-	if (now - last_seen_time) > 8.0:
+	if (now - maxf(last_seen_time, last_heard_time)) > 8.0:
 		last_known_pos = Vector2(-9999, -9999)
 
 	var active_w := bot.inventory.active_weapon() if bot.inventory else null

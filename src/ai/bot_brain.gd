@@ -195,6 +195,9 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 			elif role == Enums.DirectorRole.HOLDER:
 				state = Enums.BotState.HOLD
 				_pick_hold_point(human, tac, director, nav_grid, tile_grid)
+			elif perception.has_known_target(now) and (goal_kind != "investigate" or goal_pos.distance_to(perception.last_known_pos) > 300.0):
+				# PATROL goal priority (1): investigate a last known position younger than 8 s
+				_investigate(human, nav_grid, tile_grid)
 			elif goal_timer >= 12.0 or not path_follower.has_path():
 				_pick_new_patrol(tac, nav_grid, tile_grid)
 

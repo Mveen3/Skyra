@@ -31,6 +31,7 @@ const HUMAN_STEALTH_S: float = 2.0
 const LOOSE_WEAPON_CAP: int = 12
 var _next_loose_id: int = 1
 var _empty_frame: InputFrame = InputFrame.new()
+var _human_heard_shots: int = 0 # human.stats.shots_fired already reported to the bots
 ## Per-section timings of the last tick in µs (debug overlay "Sim ms / AI ms", §9.9)
 var prof_us: Dictionary = {"physics": 0, "combat": 0, "pickups": 0, "director": 0, "ai": 0, "nav": 0}
 
@@ -280,6 +281,9 @@ func step(dt: float, human_frame: InputFrame) -> void:
 	# 2.7 DamageSystem.flush
 	damage_system.flush(characters_by_id, time)
 
+	# 2.7b Bot hearing (§5.5): Skyra's shots and explosions this tick
+	_step_hearing()
+
 	var _t2 := Time.get_ticks_usec()
 	# 2.8 Pickups, sockets, Rocket Boost, loose weapons
 	_step_pickups(human_frame)
@@ -427,6 +431,29 @@ func _step_loose_weapons(dt: float) -> void:
 	for i in range(loose_weapons.size() - 1, -1, -1):
 		if not loose_weapons[i].active:
 			loose_weapons.remove_at(i)
+
+## §5.5 hearing: every bot within the hearing radius of a shot or explosion by Skyra
+## learns an approximate position (never while she is stealthed or dead).
+func _step_hearing() -> void:
+	var h := human_char
+	var shots := h.stats.shots_fired if h.stats else 0
+	var sources: Array = []
+	if h.life_state == Enums.LifeState.ALIVE and h.stealth_t <= 0.0:
+		if shots != _human_heard_shots:
+			var w := h.inventory.active_weapon()
+			sources.append([h.centre(), w.def.id if w else &"magnum"])
+		for p in projectiles.human_explosions_this_tick:
+			sources.append([p, &"explosion"])
+	_human_heard_shots = shots
+	projectiles.human_explosions_this_tick.clear()
+	if sources.is_empty():
+		return
+	for b in bot_chars:
+		var brain := b.brain as BotBrain
+		if b.life_state != Enums.LifeState.ALIVE or brain == null:
+			continue
+		for src in sources:
+			b.perception.hear(b.centre(), src[0], src[1], time, brain.rng)
 
 ## Breaks the CharacterState <-> BotBrain reference cycles so a finished match is freed.
 func teardown() -> void:

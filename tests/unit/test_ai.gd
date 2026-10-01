@@ -200,3 +200,41 @@ func test_ai_06_fair_pickups() -> void:
 	bot.pos = Vector2(780, 1000) # within 60 wu
 	brain._check_weapon_handling(frame, DT, human, [loose_item])
 	Assertions.assert_true(frame.pickup_pressed, "Bot picks up item when closer than Skyra")
+
+## §5.5 hearing: Skyra's Magnum shot is heard within 1800 wu (no LOS needed) and gives an
+## approximate last known position; nothing is heard while she is stealthed.
+func test_ai_07_hearing() -> void:
+	var cfg := MatchConfig.new()
+	cfg.mode = &"mini_post"
+	cfg.bot_count = 3
+	cfg.rng_seed = 5
+	var sim := MatchSim.new()
+	sim.setup(cfg)
+	sim.init_match()
+	sim.begin_active()
+	var h := sim.human_char
+	var near_bot := sim.bot_chars[0]
+	var far_bot := sim.bot_chars[1]
+	near_bot.pos = h.pos + Vector2(1500.0, 0.0)
+	far_bot.pos = h.pos + Vector2(-2400.0, 0.0)
+	var frame := InputFrame.new()
+	frame.aim_world = h.shoulder() + Vector2(0.0, -300.0)
+
+	# Stealthed: the shot is not heard
+	h.stealth_t = 1.0
+	frame.fire_pressed = true
+	sim.step(1.0 / 60.0, frame)
+	Assertions.assert_true(not near_bot.perception.has_known_target(sim.time), "No hearing while Skyra is stealthed")
+
+	# Visible again: the next shot is heard by the near bot only
+	h.stealth_t = 0.0
+	h.invuln_t = 0.0
+	frame.fire_pressed = false
+	for i in range(30):
+		sim.step(1.0 / 60.0, frame)
+	frame.fire_pressed = true
+	sim.step(1.0 / 60.0, frame)
+	Assertions.assert_true(near_bot.perception.has_known_target(sim.time), "Bot within 1800 wu hears the Magnum")
+	Assertions.assert_true(near_bot.perception.last_known_pos.distance_to(h.centre()) <= 151.0, "Heard position within 150 wu of Skyra")
+	Assertions.assert_true(not far_bot.perception.has_known_target(sim.time), "Bot beyond 1800 wu does not hear it")
+	sim.teardown()

@@ -10,6 +10,7 @@ var projectiles: Array[Projectile]:
 	get: return active_projectiles
 var next_id: int = 1
 var near_misses_this_tick: int = 0 # read and reset by MatchSim for the Director (§5.4.2)
+var human_explosions_this_tick: PackedVector2Array = PackedVector2Array() # read and reset by MatchSim (bot hearing, §5.5)
 
 func _init() -> void:
 	for i in range(MAX_PROJECTILES):
@@ -311,6 +312,8 @@ func _detonate_rocket(p: Projectile, centre: Vector2, hit_char: CharacterState, 
 
 	var ex: Dictionary = p.explosion
 	p.pos = centre
+	if p.owner_team == Enums.Team.HUMAN:
+		human_explosions_this_tick.append(centre)
 	ExplosionSystem.explode(centre, float(ex.get("radius", 220.0)), float(ex.get("max_damage", 110.0)), float(ex.get("min_damage", 20.0)),
 		float(ex.get("knockback", 950.0)), float(ex.get("self_damage_mult", 0.5)), p.owner_id, p.owner_team, p.weapon_id, grid, characters, damage_system, p.shot_id)
 	_despawn(p)
@@ -427,6 +430,8 @@ func _step_circle(p: Projectile, dt: float, grid: TileGrid, characters: Array, d
 		p.fuse -= dt
 		if p.fuse <= 0.0:
 			var ex: Dictionary = Data.grenade.explosion if Data.grenade else {}
+			if p.owner_team == Enums.Team.HUMAN:
+				human_explosions_this_tick.append(p.pos)
 			ExplosionSystem.explode(p.pos, float(ex.get("radius", 260.0)), float(ex.get("max_damage", 120.0)), float(ex.get("min_damage", 15.0)),
 				float(ex.get("knockback", 1000.0)), float(ex.get("self_damage_mult", 0.5)), p.owner_id, p.owner_team, "frag_grenade", grid, characters, damage_system)
 			_despawn(p)

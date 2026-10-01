@@ -4,6 +4,7 @@ class_name Autopilot
 extends RefCounted
 
 const BOOST_SEEK_RANGE: float = 9000.0
+const BOOST_PREPOSITION_S: float = 12.0
 const BOOST_REQUESTER_ID: int = 1000 # nav queue id, distinct from every character id
 
 var skyra: CharacterState
@@ -49,9 +50,20 @@ func step(tick: int, dt: float, sim: MatchSim) -> InputFrame:
 	var aim_target: CharacterState = target if target != null else skyra
 	var frame := brain.step_tick(tick, dt, aim_target, sim.grid, sim.nav, sim.tac, sim.director, sim.loose_weapons, sim.time, sim.sockets)
 
-	# Rocket Boost: whenever one is available, run for it (shooting on the way)
-	var boost_pos := sim.boost.current_pickup_pos + Vector2(0.0, 40.0)
-	if sim.boost.is_available() and skyra.boost_t <= 0.0 and skyra.pos.distance_to(boost_pos) < BOOST_SEEK_RANGE:
+	# Rocket Boost: whenever one is available, run for it (shooting on the way). Like a
+	# player who knows the drop timer, head for the likely socket shortly before it lands.
+	var boost_pos := Vector2(-1.0, -1.0)
+	if sim.boost.is_available():
+		boost_pos = sim.boost.current_pickup_pos + Vector2(0.0, 40.0)
+	elif sim.boost.phase == RocketBoostManager.BoostPhase.SPAWNING_IN:
+		boost_pos = sim.boost.current_pickup_pos + Vector2(0.0, 40.0)
+	elif sim.boost.phase == RocketBoostManager.BoostPhase.WAITING and sim.boost.timer <= BOOST_PREPOSITION_S \
+			and sim.boost.socket_defs.size() == 2:
+		var likely := 0 if sim.boost.last_socket_idx == 1 else 1
+		if sim.boost.last_socket_idx == -1:
+			likely = 0 if skyra.pos.distance_to(sim.boost.socket_defs[0].world) <= skyra.pos.distance_to(sim.boost.socket_defs[1].world) else 1
+		boost_pos = sim.boost.socket_defs[likely].world
+	if boost_pos.x >= 0.0 and skyra.boost_t <= 0.0 and skyra.pos.distance_to(boost_pos) < BOOST_SEEK_RANGE:
 		boost_repath_t -= dt
 		if boost_goal != boost_pos or not boost_follower.has_path() or boost_follower.needs_repath or boost_repath_t <= 0.0:
 			boost_goal = boost_pos
