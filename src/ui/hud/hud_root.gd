@@ -54,16 +54,16 @@ func _init(p_flow: GameFlow) -> void:
 	root.add_child(kill_feed)
 	cross = Crosshair.new(self)
 	root.add_child(cross)
-	pause_btn = _icon_button("⏸", -120, "Pause (Esc)")
+	pause_btn = _icon_button("⏸", -120, "Pause (Esc)", "Esc")
 	pause_btn.pressed.connect(flow.pause_match)
-	restart_btn = _icon_button("⟲", -68, "Restart (F5)")
+	restart_btn = _icon_button("⟲", -68, "Restart (F5)", "F5")
 	restart_btn.pressed.connect(func() -> void:
 		if flow.state == Enums.GameState.MATCH_ACTIVE:
 			flow.restart_prompt_active = true
 			flow.restart_prompt_timer = GameFlow.RESTART_PROMPT_S)
 	visible = false
 
-func _icon_button(glyph: String, right_offset: int, tip: String) -> Button:
+func _icon_button(glyph: String, right_offset: int, tip: String, key_hint: String) -> Button:
 	var b := Button.new()
 	b.text = glyph
 	b.tooltip_text = tip
@@ -79,6 +79,16 @@ func _icon_button(glyph: String, right_offset: int, tip: String) -> Button:
 	b.mouse_entered.connect(func() -> void: if human_input: human_input.suppress_fire = true)
 	b.mouse_exited.connect(func() -> void: if human_input: human_input.suppress_fire = false)
 	root.add_child(b)
+	# Key hint beneath the icon (§8.4: "Esc" / "F5", 12 px)
+	var hint := Label.new()
+	hint.text = key_hint
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color(Palette.UI_SUBTEXT, 0.8))
+	hint.position = Vector2(0, 46)
+	hint.size = Vector2(44, 14)
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(hint)
 	return b
 
 func _ready() -> void:
