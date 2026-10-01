@@ -554,6 +554,8 @@ func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
 
 		Enums.FireMode.SEMI, Enums.FireMode.PUMP, Enums.FireMode.BOLT:
 			frame.fire_pressed = true
+			# §5.6: Black Arrow bots aim at the head with p = 0.35, re-rolled per shot
+			aim_model.aim_head = def.id == &"m93ba" and rng.randf() < 0.35
 			pause_t = maxf(def.fire_interval_s, rng.randf_range(def.bot_pause_min, def.bot_pause_max)) * cadence_mult
 
 		Enums.FireMode.CONTINUOUS:
@@ -599,6 +601,16 @@ func _consider_grenade(human: CharacterState, tile_grid: TileGrid, director: Pac
 func _check_weapon_handling(frame: InputFrame, dt: float, human: CharacterState, loose_pickups: Array) -> void:
 	if not bot.inventory:
 		return
+
+	# Reload (§5.9): PATROL/HOLD/FLANK whenever the clip is not full; ENGAGE when the clip
+	# is below 25 % and Skyra has been out of sight for 1.0 s
+	var aw := bot.inventory.active_weapon()
+	if aw and aw.def.clip_size > 0 and aw.clip < aw.def.clip_size and (aw.reserve > 0.0 or aw.has_infinite_reserve()):
+		var calm := state in [Enums.BotState.PATROL, Enums.BotState.HOLD, Enums.BotState.FLANK]
+		var engage_low := state == Enums.BotState.ENGAGE and aw.clip < aw.def.clip_size * 0.25 \
+			and not perception.sees_human and aim_model.lost_los_t >= 1.0
+		if calm or engage_low:
+			frame.reload_pressed = true
 
 	# Weapon switch preference (§5.9)
 	if weapon_switch_cd <= 0.0 and human and bot.inventory.slot_count() > 1:

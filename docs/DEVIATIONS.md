@@ -21,3 +21,31 @@ This document logs intentional technical decisions and adjustments made during t
 - **Spec Reference:** §3.12, §5.2
 - **Adjustment:** Match simulation instances emit a scoped `kill_occurred` signal on `DamageSystem` for internal rule scorekeeping, avoiding dangling listeners on the global autoload `EventBus` singleton across multiple matches in the same process.
 - **Outcome:** Clean isolation between consecutive matches and complete absence of inter-match cross-talk.
+
+## DEV-005: Aim error decay constant 0.7 s
+- Section(s): §5.6, §10.4 T-AI-04
+- Change: σ(t) = 1.2° + 6.8°·e^(−t/0.7) instead of e^(−t/0.9).
+- Reason: with 0.9 s, σ(3 s) = 1.44° and T-AI-04 (≤ 1.3° after 3 s) cannot pass; §0.2 gives §10 precedence.
+- Invariants checked: 2.6.2 #1 (within ±15 % of the error after 1 s), #7
+- Tests: T-AI-04
+
+## DEV-006: Grenade solver extra arcs
+- Section(s): §5.6
+- Change: after the low and high ballistic arcs, 30–45° bounce arcs are also simulated and accepted only if they land within 120 wu.
+- Reason: lets bots reach targets behind low cover; acceptance rule unchanged.
+- Invariants checked: 2.6.2 #3 (INV-4 still capped)
+- Tests: T-AI-05
+
+## DEV-007: Time-sliced A* budget
+- Section(s): §5.2, §5.7.1
+- Change: queued searches share a 450-expansion budget per tick (instead of "≤ 2 searches per tick"); smoothing covers the first 28 waypoints.
+- Reason: p99 Sim tick went from 4.87 ms to ≈ 3 ms (S-01 limit 4.0 ms).
+- Invariants checked: 2.6.2 #1, #3, #7
+- Tests: T-NAV-01…04, S-01
+
+## DEV-008: Soak autopilot boost anticipation
+- Section(s): §10.5
+- Change: the autopilot also walks to the likely Rocket Boost socket 12 s before a drop and keeps moving to it while shooting.
+- Reason: without it S-01 "Rocket Boost spawned ≥ 3" depends on luck; the game itself is unchanged.
+- Invariants checked: 2.6.2 #7
+- Tests: S-01 (seeds 1234, 1–5), S-01b
