@@ -75,6 +75,9 @@ static func select_human_spawn(sockets: Array, bots: Array, last_death_pos: Vect
 
 	return p_sockets[0]
 
+## Tier (1–4) of the last `select_bot_spawn` result; tier ≥ 3 is a fallback (INV-6, §10.5).
+static var last_bot_tier: int = 0
+
 static func select_bot_spawn(sockets: Array, human_pos: Vector2, human_cam_rect: Rect2,
                              last_bot_spawns: Dictionary, now: float, tile_grid: TileGrid,
                              rng: RandomNumberGenerator, min_placed_dist: float = 0.0,
@@ -140,6 +143,7 @@ static func select_bot_spawn(sockets: Array, human_pos: Vector2, human_cam_rect:
 			if pred.call(e):
 				valid.append(e["socket"])
 		if not valid.is_empty():
+			last_bot_tier = tier_idx
 			if tier_idx >= 3:
 				Log.warn("bot_spawn_fallback tier=%d" % tier_idx)
 			if tier_idx == 4:

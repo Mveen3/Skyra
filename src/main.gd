@@ -216,74 +216,22 @@ func _run_gen_sfx() -> void:
 	Log.info("Generated %d WAV files." % count)
 	get_tree().quit(0)
 
+## `--soak` (§9.9, §10.5 S-01 / S-01b): per-tick invariants + end-of-run statistics.
 func _run_soak(seconds: int, mode: StringName, bots: int, seed_val: int) -> void:
 	Log.info("Running soak test: %d seconds, mode=%s, bots=%d, seed=%d" % [seconds, str(mode), bots, seed_val])
-	var start_wall_us: int = Time.get_ticks_usec()
-	var cfg: MatchConfig = MatchConfig.new()
-	cfg.mode = mode
-	cfg.bot_count = bots
-	cfg.rng_seed = seed_val
-	cfg.duration_s = float(seconds)
-
-	var sim: MatchSim = MatchSim.new()
-	sim.setup(cfg)
-	sim.init_match()
-	sim.begin_active()
-
-	var auto: Autopilot = Autopilot.new(sim.human_char, seed_val)
-	var dt: float = 1.0 / 60.0
-	var total_ticks: int = seconds * 60
-
-	var total_sim_time_us: int = 0
-	var tick_times_us: Array[int] = []
-
-	var world_w: float = float(sim.grid.cols) * float(sim.grid.tile_size)
-	var world_h: float = float(sim.grid.rows) * float(sim.grid.tile_size)
-
-	for t in range(total_ticks):
-		var t0: int = Time.get_ticks_usec()
-		var frame: InputFrame = auto.step(t, dt, sim)
-		sim.step(dt, frame)
-		var t1: int = Time.get_ticks_usec()
-		var step_us: int = t1 - t0
-		total_sim_time_us += step_us
-		tick_times_us.append(step_us)
-
-		# Per-tick invariant checks (§10.5)
-		if sim.projectiles.projectiles.size() > 512:
-			Log.error("Invariants violated: projectiles > 512 at tick %d" % t)
-			get_tree().quit(1)
-			return
-
-		if sim.loose_weapons.size() > 12:
-			Log.error("Invariants violated: loose weapons > 12 at tick %d" % t)
-			get_tree().quit(1)
-			return
-
-		for c in sim.characters:
-			if is_nan(c.pos.x) or is_nan(c.pos.y) or is_inf(c.pos.x) or is_inf(c.pos.y):
-				Log.error("Invariants violated: NaN/INF pos at tick %d" % t)
-				get_tree().quit(1)
-				return
-			if c.pos.x < 0 or c.pos.x > world_w or c.pos.y < 0 or c.pos.y > world_h:
-				Log.error("Invariants violated: out of bounds at tick %d" % t)
-				get_tree().quit(1)
-				return
-
-	var elapsed_wall_s: float = float(Time.get_ticks_usec() - start_wall_us) / 1000000.0
-	var mean_tick_ms: float = (float(total_sim_time_us) / float(total_ticks)) / 1000.0
-	tick_times_us.sort()
-	var p99_idx: int = int(float(total_ticks) * 0.99)
-	var p99_tick_ms: float = float(tick_times_us[p99_idx]) / 1000.0
-
-	Log.info("SOAK PASS: %d ticks in %.2f s wall-clock (mean tick: %.3f ms, p99: %.3f ms)" % [
-		total_ticks, elapsed_wall_s, mean_tick_ms, p99_tick_ms
-	])
-	sim.teardown()
-
-	if elapsed_wall_s > 30.0:
-		Log.error("Soak failed: wall clock time %.2f > 30 s" % elapsed_wall_s)
+	var result: Dictionary = SoakRunner.new(mode, bots, seed_val, seconds).run(true)
+	var s: Dictionary = result["stats"]
+	Log.info("Skyra kills %d, deaths %d · bot kills on Skyra %d · boosts %d · weapons picked %s" % [
+		s["skyra_kills"], s["skyra_deaths"], s["bot_kills_on_skyra"], s["boost_spawns"], str(s["weapons_picked"])])
+	Log.info("INV-5 %.3f · max tokens %d · max bots firing per 1 s %d · bot spawn fallbacks %d/%d" % [
+		s["inv5"], s["max_tokens"], s["inv2_worst"], s["spawn_fallbacks"], s["bot_respawns"]])
+	Log.info("%d ticks in %.2f s wall-clock (mean tick %.3f ms, p99 %.3f ms)" % [
+		seconds * 60, s["wall_s"], s["mean_ms"], s["p99_ms"]])
+	if not bool(result["ok"]):
+		for f in result["failures"]:
+			Log.error("SOAK: " + str(f))
+		Log.error("SOAK FAIL")
 		get_tree().quit(1)
 		return
-
+	Log.info("SOAK PASS")
 	get_tree().quit(0)

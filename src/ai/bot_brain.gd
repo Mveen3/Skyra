@@ -24,6 +24,7 @@ var jet_hop_t: float = 0.0
 
 # Cadence timers
 var burst_shots_left: int = 0
+var _burst_seen_shots: int = 0 # bot.stats.shots_fired when the burst was last counted
 var pause_t: float = 0.0
 var continuous_ticks_left: int = 0
 var weapon_switch_cd: float = 0.0
@@ -39,6 +40,9 @@ var sockets_ref: WeaponSocketManager = null
 var item_goal_active: bool = false
 var item_goal_pos: Vector2 = Vector2.ZERO
 var item_goal_id: StringName = &""
+
+# Autopilot (§10.5): ignores Director tokens for item decisions
+var ignores_tokens: bool = false
 
 # Path requests deferred by the per-tick A* budget
 var _tick: int = 0
@@ -172,7 +176,7 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 
 	# Heading for a weapon item: keep going unless Skyra shows up or a token arrives
 	if item_goal_active and state in [Enums.BotState.PATROL, Enums.BotState.HOLD, Enums.BotState.FLANK] \
-			and not has_token and not perception.sees_human:
+			and (not has_token or ignores_tokens) and not perception.sees_human:
 		return
 	item_goal_active = false
 
@@ -317,7 +321,7 @@ func _best_held_value() -> float:
 ## §5.9 pickup decisions (PATROL / HOLD / FLANK): socket or loose weapons within 1200 wu
 ## worth >= 10 more than the best held weapon, skipping items Skyra is closer to.
 func _consider_items(human: CharacterState, nav_grid: NavGrid, tile_grid: TileGrid, loose_pickups: Array) -> void:
-	if bot.life_state != Enums.LifeState.ALIVE or has_token:
+	if bot.life_state != Enums.LifeState.ALIVE or (has_token and not ignores_tokens):
 		item_goal_active = false
 		return
 	if not (state in [Enums.BotState.PATROL, Enums.BotState.HOLD, Enums.BotState.FLANK]):
@@ -330,7 +334,8 @@ func _consider_items(human: CharacterState, nav_grid: NavGrid, tile_grid: TileGr
 		return
 	var held := _best_held_value()
 	var me := bot.centre()
-	var human_alive := human != null and human.life_state == Enums.LifeState.ALIVE
+	# The autopilot's "human" is the bot it hunts, so the fairness rule does not apply.
+	var human_alive := human != null and human.life_state == Enums.LifeState.ALIVE and not ignores_tokens
 	var best_gain := 9.999
 	var best_pos := Vector2.ZERO
 	var best_id := &""
@@ -484,6 +489,16 @@ func _apply_state_movement(frame: InputFrame, dt: float, human: CharacterState) 
 
 func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
                    tile_grid: TileGrid, director: PacingDirector) -> void:
+	# AUTO bursts count rounds actually fired (the weapon steps before the AI each tick)
+	var shots_now := bot.stats.shots_fired if bot.stats else 0
+	if burst_shots_left > 0 and shots_now > _burst_seen_shots:
+		burst_shots_left -= shots_now - _burst_seen_shots
+		if burst_shots_left <= 0:
+			var w := bot.inventory.active_weapon() if bot.inventory else null
+			if w:
+				pause_t = rng.randf_range(w.def.bot_pause_min, w.def.bot_pause_max) * (2.0 if is_self_defender and not has_token else 1.0)
+	_burst_seen_shots = shots_now
+
 	# Rule INV-3: While Skyra's stealth is active: 0 bot shots
 	if not human or human.life_state != Enums.LifeState.ALIVE or human.stealth_t > 0.0:
 		return
@@ -529,12 +544,10 @@ func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
 
 	match def.fire_mode:
 		Enums.FireMode.AUTO:
+			# Burst of N rounds (counted at the top of this function), then a pause
 			if burst_shots_left <= 0:
 				burst_shots_left = rng.randi_range(def.bot_burst_min, def.bot_burst_max)
 			frame.fire_held = true
-			burst_shots_left -= 1
-			if burst_shots_left <= 0:
-				pause_t = rng.randf_range(def.bot_pause_min, def.bot_pause_max) * cadence_mult
 
 		Enums.FireMode.SEMI, Enums.FireMode.PUMP, Enums.FireMode.BOLT:
 			frame.fire_pressed = true

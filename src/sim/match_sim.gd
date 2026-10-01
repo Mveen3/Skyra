@@ -24,6 +24,8 @@ var motor: CharacterMotor
 var loose_weapons: Array[LooseWeapon] = []
 var last_bot_spawns: Dictionary = {} # socket id -> sim time of the last bot spawn there
 var human_view_rect: Rect2 = Rect2() # fed by the camera; zero size = approximate from scope
+var bot_respawns: int = 0          # bot respawns this match (initial spawns excluded)
+var bot_spawn_fallbacks: int = 0   # ... of which needed spawn tier >= 3 (§6.7, INV-6)
 
 const HUMAN_STEALTH_S: float = 2.0
 const LOOSE_WEAPON_CAP: int = 12
@@ -185,6 +187,9 @@ func _respawn(c: CharacterState) -> void:
 		# While Skyra is dead, bot spawns use her death position as "Skyra" (§6.7).
 		var skyra_pos := human_char.pos if human_char.life_state == Enums.LifeState.ALIVE else human_char.death_pos
 		s = SpawnSelector.select_bot_spawn(Data.map.sockets, skyra_pos, _human_view_rect(skyra_pos), last_bot_spawns, time, grid, rng_streams.rng_spawn)
+		bot_respawns += 1
+		if SpawnSelector.last_bot_tier >= 3:
+			bot_spawn_fallbacks += 1
 	if s:
 		_spawn_at(c, s, false)
 
