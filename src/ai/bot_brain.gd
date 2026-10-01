@@ -490,6 +490,12 @@ func _apply_state_movement(frame: InputFrame, dt: float, human: CharacterState) 
 		Enums.BotState.RETREAT_RELOAD:
 			frame.reload_pressed = true
 
+## Pause multiplier: self-defenders (§5.4.6) and SEEK_COVER (§5.3) fire at half cadence.
+func _cadence_mult() -> float:
+	if ignores_tokens:
+		return 1.0 # autopilot (§10.5) is not paced by the Director
+	return 2.0 if (is_self_defender and not has_token) or state == Enums.BotState.SEEK_COVER else 1.0
+
 func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
                    tile_grid: TileGrid, director: PacingDirector) -> void:
 	# AUTO bursts count rounds actually fired (the weapon steps before the AI each tick)
@@ -499,7 +505,7 @@ func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
 		if burst_shots_left <= 0:
 			var w := bot.inventory.active_weapon() if bot.inventory else null
 			if w:
-				pause_t = rng.randf_range(w.def.bot_pause_min, w.def.bot_pause_max) * (2.0 if is_self_defender and not has_token else 1.0)
+				pause_t = rng.randf_range(w.def.bot_pause_min, w.def.bot_pause_max) * _cadence_mult()
 	_burst_seen_shots = shots_now
 
 	# Rule INV-3: While Skyra's stealth is active: 0 bot shots
@@ -543,7 +549,7 @@ func _apply_firing(frame: InputFrame, dt: float, human: CharacterState,
 	if pause_t > 0.0:
 		return
 
-	var cadence_mult := 2.0 if is_self_defender else 1.0
+	var cadence_mult := _cadence_mult()
 
 	match def.fire_mode:
 		Enums.FireMode.AUTO:
