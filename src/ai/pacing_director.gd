@@ -12,6 +12,7 @@ var breather_timer: float = 0.0
 var post_grace_ramp_timer: float = 0.0
 var live_bot_grenades: int = 0
 var self_defender_id: int = -1
+var self_defender_handover_t: float = 0.0 # INV-2: no new self-defender within 1.0 s of the last one
 
 # Bot tracking data: bot_id -> Dictionary
 # keys: "has_token": bool, "token_t": float, "cooldown_t": float, "time_since_had": float, "score": float, "role": int, "grenade_cooldown": float
@@ -38,6 +39,7 @@ func reset() -> void:
 	post_grace_ramp_timer = 0.0
 	live_bot_grenades = 0
 	self_defender_id = -1
+	self_defender_handover_t = 0.0
 	bot_data.clear()
 	_update_staging_ring()
 
@@ -157,6 +159,7 @@ func step(dt: float, bots: Array, human: CharacterState, now: float) -> void:
 	phase_timer += dt
 	breather_timer = maxf(0.0, breather_timer - dt)
 	post_grace_ramp_timer = maxf(0.0, post_grace_ramp_timer - dt)
+	self_defender_handover_t = maxf(0.0, self_defender_handover_t - dt)
 	time_since_skyra_damaged += dt
 
 	for bid in bot_data:
@@ -341,14 +344,34 @@ func step(dt: float, bots: Array, human: CharacterState, now: float) -> void:
 			else:
 				bot_data[b_char.id]["role"] = Enums.DirectorRole.PATROLLER
 
-	# Pick at most one self-defender (§5.4.6)
-	self_defender_id = -1
+	# Pick at most one self-defender (§5.4.6). The current one keeps the role while it
+	# still qualifies; a different bot may take over only 1.0 s after the role was last
+	# held, so no 1-s window sees two self-defenders (INV-2).
+	var prev := self_defender_id
+	var keep := false
 	for b in alive_bots:
 		var b_char: CharacterState = b as CharacterState
-		if not bool(bot_data[b_char.id]["has_token"]):
-			var damaged_recently := (now - b_char.last_enemy_damage_time) <= 1.5
-			var near := human and b_char.pos.distance_to(human.pos) <= 700.0
-			var has_los := b_char.perception and b_char.perception.sees_human
-			if damaged_recently and near and has_los:
-				self_defender_id = b_char.id
-				break
+		if b_char.id == prev and _qualifies_self_defence(b_char, human, now):
+			keep = true
+	if keep:
+		self_defender_handover_t = 1.0
+		return
+	self_defender_id = -1
+	if prev != -1:
+		self_defender_handover_t = 1.0
+	if self_defender_handover_t > 0.0:
+		return
+	for b in alive_bots:
+		var b_char: CharacterState = b as CharacterState
+		if _qualifies_self_defence(b_char, human, now):
+			self_defender_id = b_char.id
+			self_defender_handover_t = 1.0
+			break
+
+func _qualifies_self_defence(b_char: CharacterState, human: CharacterState, now: float) -> bool:
+	if bool(bot_data[b_char.id]["has_token"]):
+		return false
+	var damaged_recently := (now - b_char.last_enemy_damage_time) <= 1.5
+	var near := human != null and b_char.pos.distance_to(human.pos) <= 700.0
+	var has_los := b_char.perception != null and b_char.perception.sees_human
+	return damaged_recently and near and has_los
