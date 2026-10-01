@@ -99,4 +99,4 @@ tools/fetch_fonts.sh                # optional: Russo One / Rajdhani fonts (OFL)
   Ambient + low-pass, UI), voice pools, and an event router mapping game events to cues.
 
 The full specification is `docs/Skyra_Technical_Architecture.md`; intentional deviations
-are logged in `docs/DEVIATIONS.md`.
+are logged in `DEVIATIONS.md`.
