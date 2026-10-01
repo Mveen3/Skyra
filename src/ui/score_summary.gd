@@ -102,19 +102,19 @@ func _draw_panel() -> void:
 			p.draw_string(hf, Vector2(it[3], it[4] + 12 + it[5]), it[1], HORIZONTAL_ALIGNMENT_LEFT, -1, it[5], it[2])
 	# Rank badge
 	if _revealed > 3:
-		var c := Vector2(700, 250)
+		var c := Vector2(700, 180)
 		var col: Color = RANK_COLORS.get(summary.rank, Palette.UI_TEXT)
-		p.draw_circle(c, 78.0, Color(col, 0.2))
-		p.draw_arc(c, 70.0, 0.0, TAU, 48, col, 5.0)
+		p.draw_circle(c, 70.0, Color(col, 0.2))
+		p.draw_arc(c, 64.0, 0.0, TAU, 48, col, 5.0)
 		var rw := hf.get_string_size(summary.rank, HORIZONTAL_ALIGNMENT_LEFT, -1, 96).x
 		p.draw_string(hf, c + Vector2(-rw * 0.5, 34), summary.rank, HORIZONTAL_ALIGNMENT_LEFT, -1, 96, col)
-		var tw := bf.get_string_size(summary.rank_title, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
-		p.draw_string(bf, c + Vector2(-tw * 0.5, 110), summary.rank_title.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, col)
+		var tw := bf.get_string_size(summary.rank_title.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
+		p.draw_string(bf, c + Vector2(-tw * 0.5, 104), summary.rank_title.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, col)
 	# Bots table
 	if _revealed > _items.size():
 		var x := 840.0
 		p.draw_string(bf, Vector2(x, 180), "BOT", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Palette.UI_SUBTEXT)
-		p.draw_string(bf, Vector2(x + 130, 180), "KILLED YOU", HORIZONTAL_ALIGNMENT_CENTER, 110, 20, Palette.UI_SUBTEXT)
+		p.draw_string(bf, Vector2(x + 100, 180), "KILLED YOU", HORIZONTAL_ALIGNMENT_CENTER, 130, 20, Palette.UI_SUBTEXT)
 		p.draw_string(bf, Vector2(x + 250, 180), "DEATHS", HORIZONTAL_ALIGNMENT_CENTER, 90, 20, Palette.UI_SUBTEXT)
 		var rows := summary.bots.duplicate()
 		rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["kills_on_human"]) > int(b["kills_on_human"]))
@@ -123,5 +123,5 @@ func _draw_panel() -> void:
 			var y := 226.0 + i * 52.0
 			p.draw_rect(Rect2(x - 12, y - 32, 340, 44), Color(1, 1, 1, 0.03 if i % 2 == 0 else 0.0))
 			p.draw_string(hf, Vector2(x, y), str(row["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(str(row["color"])))
-			p.draw_string(hf, Vector2(x + 130, y), str(row["kills_on_human"]), HORIZONTAL_ALIGNMENT_CENTER, 110, 28, Palette.UI_TEXT)
+			p.draw_string(hf, Vector2(x + 100, y), str(row["kills_on_human"]), HORIZONTAL_ALIGNMENT_CENTER, 130, 28, Palette.UI_TEXT)
 			p.draw_string(hf, Vector2(x + 250, y), str(row["deaths"]), HORIZONTAL_ALIGNMENT_CENTER, 90, 28, Palette.UI_TEXT)
