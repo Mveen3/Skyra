@@ -264,10 +264,10 @@ static func step_grenade(c: CharacterState, frame: InputFrame, dt: float, grid: 
 	var released := frame.grenade_released or not (frame.grenade_held or frame.grenade_pressed)
 	if not released:
 		return
-	inv.grenade_aiming = false
 	var w := inv.active_weapon()
 	if w and w.state == Enums.WeaponState.SWITCHING:
-		return
+		return # keep aiming: the throw goes out as soon as the switch finishes
+	inv.grenade_aiming = false
 	throw_grenade(c, frame, grid, proj_sys)
 
 ## Initial grenade position and velocity for a throw along `dir` (also used by the
