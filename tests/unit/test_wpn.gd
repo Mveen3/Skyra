@@ -287,7 +287,7 @@ func test_wpn_09_blaze() -> void:
 	target.id = 5
 	dmg_sys.apply_burn(target, 0)
 	for t in range(180): # 3 s
-		dmg_sys.step([target], DT, float(t) * DT)
+		dmg_sys.step_burn(target, DT)
 
 	var total_burn_dmg := 0.0
 	for q in dmg_sys.damage_queue:

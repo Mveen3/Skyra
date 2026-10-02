@@ -159,3 +159,14 @@ func _record_hit(source: CharacterState, q: QueuedDamage) -> void:
 		st.shots_hit += 1
 		if q.is_headshot:
 			st.headshots += 1
+
+## Blaze burn (§3.12): 2.5 damage every 0.25 s while burn_t > 0 (10 DPS for 3 s).
+func step_burn(c: CharacterState, dt: float) -> void:
+	if c.burn_t <= 0.0:
+		return
+	c.burn_t = maxf(0.0, c.burn_t - dt)
+	c.burn_tick_t += dt
+	if c.burn_tick_t >= BURN_TICK_S - 1e-4:
+		c.burn_tick_t -= BURN_TICK_S
+		var team := Enums.Team.HUMAN if c.burn_source == 0 else Enums.Team.BOT
+		queue_damage(c, c.burn_source, team, "flamethrower", BURN_TICK_DMG, c.pos, Vector2.ZERO, false, false, 1.0)

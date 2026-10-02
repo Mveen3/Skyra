@@ -251,13 +251,7 @@ func step(dt: float, human_frame: InputFrame) -> void:
 				EventBus.stealth_ended.emit(c.id)
 		if c.invuln_t > 0.0:
 			c.invuln_t = maxf(0.0, c.invuln_t - dt)
-		if c.burn_t > 0.0:
-			c.burn_t = maxf(0.0, c.burn_t - dt)
-			c.burn_tick_t += dt
-			if c.burn_tick_t >= DamageSystem.BURN_TICK_S:
-				c.burn_tick_t -= DamageSystem.BURN_TICK_S
-				damage_system.queue_damage(c, c.burn_source, Enums.Team.HUMAN if c.burn_source == 0 else Enums.Team.BOT,
-					"flamethrower", DamageSystem.BURN_TICK_DMG, c.pos, Vector2.ZERO, false, false, 1.0)
+		damage_system.step_burn(c, dt)
 
 	var _t0 := Time.get_ticks_usec()
 	# 2.2 CharacterMotor.step (id order, human first); the dead don't move
