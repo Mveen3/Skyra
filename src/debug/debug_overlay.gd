@@ -115,6 +115,14 @@ func _draw_world() -> void:
 				_world.draw_circle(n.pos, 3.0, Color(0.3, 1, 0.4, 0.7))
 	var font := ThemeDB.fallback_font
 	var h := sim.human_char
+	# Spawn-socket scores of the last selection (§9.9)
+	for e in SpawnSelector.last_eval:
+		var p: Vector2 = e["pos"]
+		var col := Color(1, 0.85, 0.2) if bool(e["chosen"]) else Color(0.8, 0.9, 1, 0.8)
+		var txt := ("%s ▶ " % SpawnSelector.last_eval_kind if bool(e["chosen"]) else "") + str(e["text"])
+		_world.draw_rect(Rect2(p - Vector2(20, 4), Vector2(40, 4)), col)
+		_world.draw_string_outline(font, p + Vector2(-90, 22), txt, HORIZONTAL_ALIGNMENT_CENTER, 180, 16, 4, Color.BLACK)
+		_world.draw_string(font, p + Vector2(-90, 22), txt, HORIZONTAL_ALIGNMENT_CENTER, 180, 16, col)
 	for b in sim.bot_chars:
 		if b.life_state != Enums.LifeState.ALIVE:
 			continue

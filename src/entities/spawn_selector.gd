@@ -77,9 +77,15 @@ static func select_human_spawn(sockets: Array, bots: Array, last_death_pos: Vect
 			)
 			var top_count: int = mini(3, valid.size())
 			var chosen_idx := rng.randi_range(0, top_count - 1)
+			_record_human_eval(evaluated, valid, valid[chosen_idx]["socket"])
 			return valid[chosen_idx]["socket"]
 
 	return p_sockets[0]
+
+## Debug overlay (§9.9 "spawn-socket scores of the last selection"): one entry per
+## evaluated socket: {pos, text, chosen}.
+static var last_eval: Array = []
+static var last_eval_kind: String = ""
 
 ## Tier (1–4) of the last `select_bot_spawn` result; tier ≥ 3 is a fallback (INV-6, §10.5).
 static var last_bot_tier: int = 0
@@ -142,6 +148,14 @@ static func select_bot_spawn(sockets: Array, human_pos: Vector2, human_cam_rect:
 	]
 
 	var tier_idx := 0
+	var tier_of := {}
+	for e in evaluated:
+		var t := 1
+		for pr in tier_preds:
+			if pr.call(e):
+				break
+			t += 1
+		tier_of[e["socket"].id] = t
 	for pred in tier_preds:
 		tier_idx += 1
 		var valid: Array[SocketDef] = []
@@ -161,8 +175,11 @@ static func select_bot_spawn(sockets: Array, human_pos: Vector2, human_cam_rect:
 						return d_a > d_b
 					return str(a["socket"].id) < str(b["socket"].id)
 				)
+				_record_bot_eval(evaluated, tier_of, evaluated[0]["socket"])
 				return evaluated[0]["socket"]
-			return valid[rng.randi_range(0, valid.size() - 1)]
+			var pick: SocketDef = valid[rng.randi_range(0, valid.size() - 1)]
+			_record_bot_eval(evaluated, tier_of, pick)
+			return pick
 
 	# If all were too close, relax placed constraint
 	if min_placed_dist > 0.0:
@@ -195,3 +212,19 @@ static func select_initial_spawns(sockets: Array, bot_count: int, tile_grid: Til
 		last_spawns[b_sock.id] = 0.0
 
 	return result
+
+static func _record_human_eval(evaluated: Array, valid: Array, chosen: SocketDef) -> void:
+	last_eval_kind = "human"
+	last_eval = []
+	for e in evaluated:
+		var txt := "d%d seen%d" % [int(minf(float(e["d_min"]), 9999.0)), int(e["seen_by"])]
+		if valid.has(e):
+			txt += " s%d" % int(float(e.get("score", 0.0)))
+		last_eval.append({"pos": (e["socket"] as SocketDef).pos, "text": txt, "chosen": e["socket"] == chosen})
+
+static func _record_bot_eval(evaluated: Array, tier_of: Dictionary, chosen: SocketDef) -> void:
+	last_eval_kind = "bot"
+	last_eval = []
+	for e in evaluated:
+		var sock: SocketDef = e["socket"]
+		last_eval.append({"pos": sock.pos, "text": "T%s d%d" % [str(tier_of.get(sock.id, 5)) if int(tier_of.get(sock.id, 5)) <= 4 else "–", int(float(e["dist"]))], "chosen": sock == chosen})
