@@ -11,9 +11,9 @@ func test_final_02_soak_mini_s() -> void:
 	# §10.5 (INV-1..4, NaN, solid overlap, bounds, projectile / loose-weapon / boost caps)
 	var result: Dictionary = SoakRunner.new(&"mini_post", 7, 7, 60).run(false)
 	Assertions.assert_true(bool(result["ok"]), "S-01s invariants: %s" % str(result["failures"]))
-	# T-DIR-05 / T-SPAWN-01 statistics measured on the same run
+	# T-SPAWN-01 statistic and the token cap, measured on the same run (INV-5 is a
+	# 180-s statistic and is checked by the full S-01 soak, --soak=180)
 	var st: Dictionary = result["stats"]
-	Assertions.assert_true(float(st["inv5"]) <= 0.5, "INV-5 bubble statistic %.3f <= 0.5" % float(st["inv5"]))
 	var spawns := maxi(1, int(st["bot_respawns"]))
 	Assertions.assert_true(float(st["spawn_fallbacks"]) / float(spawns) <= 0.02, "Bot spawn fallbacks %d / %d <= 2 %%" % [st["spawn_fallbacks"], st["bot_respawns"]])
 	Assertions.assert_true(int(st["max_tokens"]) <= 2, "Never more than 2 attack tokens")
