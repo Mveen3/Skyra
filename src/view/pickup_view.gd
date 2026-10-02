@@ -95,11 +95,23 @@ func _draw_weapon_centered(id: StringName, center: Vector2, rot: float, alpha: f
 
 func _draw_frag_pack(center: Vector2, tilt: float) -> void:
 	draw_set_transform(center, tilt, Vector2.ONE)
+	# Military ammo crate: olive body with lid shading, steel edges, latches, handle, stencil
 	var r := Rect2(-20.0, -14.0, 40.0, 28.0)
+	var olive := Color("#556B2F")
 	draw_rect(r.grow(2.5), Palette.OUTLINE)
-	draw_rect(r, Color("#556B2F"))
-	draw_rect(Rect2(-20.0, -14.0, 40.0, 5.0), Color("#6B8A3A"))
-	draw_string(ThemeDB.fallback_font, Vector2(-15.0, 9.0), "FRAG", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#E8E3C8"))
+	draw_rect(r, olive)
+	draw_rect(Rect2(-20.0, -14.0, 40.0, 7.0), olive.lightened(0.22))
+	draw_rect(Rect2(-20.0, 8.0, 40.0, 6.0), olive.darkened(0.25))
+	draw_line(Vector2(-20.0, -7.0), Vector2(20.0, -7.0), olive.darkened(0.45), 1.2)
+	for ex in [-20.0, 17.0]:
+		draw_rect(Rect2(ex, -14.0, 3.0, 28.0), Color("#7D8792"))
+		draw_rect(Rect2(ex, -14.0, 1.0, 28.0), Color("#B9C2CB"))
+	for lx in [-11.0, 7.0]:
+		draw_rect(Rect2(lx, -9.0, 4.0, 5.0), Color("#3A4048"))
+		draw_rect(Rect2(lx + 1.0, -8.0, 2.0, 1.5), Color("#9AA4AE"))
+	draw_arc(Vector2(0.0, -14.0), 5.0, PI, TAU, 8, Color("#2A2F36"), 2.0)
+	draw_string(ThemeDB.fallback_font, Vector2(-14.0, 7.5), "FRAG ×2", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#E8E3C8"))
+	draw_line(Vector2(-18.0, -12.5), Vector2(15.0, -12.5), Color(1, 1, 1, 0.25), 1.0)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	for gx in [-9.0, 9.0]:
 		WeaponPainter.draw(self, &"frag_grenade", Transform2D(tilt, center).translated_local(Vector2(gx, -24.0)).scaled_local(Vector2(0.75, 0.75)))

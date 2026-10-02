@@ -14,6 +14,8 @@ const HIP_REAR := Vector2(-3.0, -30.0)
 const THIGH_LEN := 14.0
 const SHIN_LEN := 13.0
 const BOOT_COLOR := Color("#1E2230")
+const HEAD_SCALE := 0.84
+const CHEST_SCALE := Vector2(1.15, 1.06)
 const RIG_SHADER := preload("res://src/view/shaders/character.gdshader")
 
 var c: CharacterState
@@ -239,6 +241,13 @@ func _limb(a: Vector2, b: Vector2, w: float, col: Color, outline: bool) -> void:
 		draw_line(a, b, col, w)
 		draw_circle(a, w * 0.5, col)
 		draw_circle(b, w * 0.5, col)
+		# Rounded-limb shading: dark underside, light top edge
+		var dir := (b - a).normalized()
+		var n := Vector2(-dir.y, dir.x)
+		if n.y < 0.0:
+			n = -n
+		draw_line(a + n * w * 0.28, b + n * w * 0.28, col.darkened(0.3), w * 0.32)
+		draw_line(a - n * w * 0.26, b - n * w * 0.26, col.lightened(0.28), w * 0.18)
 
 func _rrect(center: Vector2, size: Vector2, col: Color, outline: bool) -> void:
 	var r := Rect2(center - size * 0.5, size)
@@ -259,8 +268,19 @@ func _leg(hip: Vector2, thigh: float, knee: float, col: Color, outline: bool) ->
 	var ankle := knee_pt + Vector2(sin(shin), cos(shin)) * SHIN_LEN
 	_limb(hip, knee_pt, 10.0, col, outline)
 	_limb(knee_pt, ankle, 9.0, col, outline)
-	# Boot (toe +x)
-	_rrect(ankle + Vector2(3.5, -1.0), Vector2(15.0, 7.0), BOOT_COLOR, outline)
+	# Combat boot (toe +x): shaped upper, rubber sole, lace highlight
+	var boot := _offset(PackedVector2Array([Vector2(-4.5, -6.0), Vector2(3.0, -6.0), Vector2(5.0, -3.0), Vector2(11.5, -1.5),
+		Vector2(11.5, 2.5), Vector2(-4.5, 2.5)]), ankle)
+	if outline:
+		_poly_outline(boot)
+		draw_colored_polygon(boot, Palette.OUTLINE)
+	else:
+		draw_colored_polygon(boot, BOOT_COLOR)
+		draw_rect(Rect2(ankle + Vector2(-4.5, 0.8), Vector2(16.0, 1.9)), Color("#0C0E14"))
+		draw_line(ankle + Vector2(-2.5, -4.5), ankle + Vector2(3.5, -4.0), BOOT_COLOR.lightened(0.35), 1.2)
+		# Knee pad
+		draw_circle(knee_pt + Vector2(1.5, 0.0), 5.2, secondary.darkened(0.35))
+		draw_circle(knee_pt + Vector2(1.0, -1.2), 2.2, Color(1, 1, 1, 0.18))
 
 func _draw_rig(p: Dictionary, outline: bool) -> void:
 	var drop := Vector2(0.0, p.hip_drop + p.bob)
@@ -272,7 +292,15 @@ func _draw_rig(p: Dictionary, outline: bool) -> void:
 	var jp := Vector2(-16.0, -50.0) + drop + Vector2(-lean * 20.0, 0.0)
 	_rrect(jp, Vector2(14.0, 28.0), Palette.METAL, outline)
 	if not outline:
-		draw_rect(Rect2(jp + Vector2(-2.0, -14.0), Vector2(4.0, 28.0)), primary)
+		# twin pressurised tanks with cylinder shading, a colour band and valves
+		for tx in [-3.6, 3.6]:
+			var tc := jp + Vector2(tx, 0.0)
+			draw_rect(Rect2(tc + Vector2(-3.4, -13.0), Vector2(6.8, 26.0)), Palette.METAL.darkened(0.1))
+			draw_rect(Rect2(tc + Vector2(-3.4, -13.0), Vector2(1.6, 26.0)), Palette.METAL.lightened(0.35))
+			draw_rect(Rect2(tc + Vector2(1.8, -13.0), Vector2(1.6, 26.0)), Palette.METAL.darkened(0.4))
+			draw_circle(tc + Vector2(0.0, -13.0), 3.4, Palette.METAL.lightened(0.15))
+			draw_rect(Rect2(tc + Vector2(-3.4, -3.0), Vector2(6.8, 4.0)), primary)
+		draw_rect(Rect2(jp + Vector2(-1.0, -15.5), Vector2(2.0, 3.0)), Color("#2A2F36"))
 	_rrect(jp + Vector2(-3.0, 16.0), Vector2(6.0, 6.0), Color("#2A2F36"), outline)
 	_rrect(jp + Vector2(3.0, 16.0), Vector2(6.0, 6.0), Color("#2A2F36"), outline)
 	if not outline and (c.jet_active or c.boost_t > 0.0 and not c.grounded):
@@ -285,12 +313,34 @@ func _draw_rig(p: Dictionary, outline: bool) -> void:
 	_limb(rs, rs + Vector2(sin(ra), cos(ra)) * 18.0, 8.0, secondary, outline)
 	# Torso
 	var tilt := Transform2D(lean, Vector2.ZERO)
-	draw_set_transform_matrix(_current_body() * Transform2D(0.0, torso_c) * tilt * Transform2D(0.0, -torso_c))
-	_rrect(torso_c, Vector2(24.0, 30.0), primary, outline)
-	if not outline:
-		draw_rect(Rect2(torso_c + Vector2(-6.0, -10.0), Vector2(16.0, 12.0)), primary.lightened(0.25))
-		draw_rect(Rect2(torso_c + Vector2(-12.0, 12.0), Vector2(24.0, 4.0)), secondary)
-		draw_rect(Rect2(torso_c + Vector2(-2.0, 12.0), Vector2(4.0, 4.0)), Palette.SKYRA_TRIM)
+	draw_set_transform_matrix(_current_body() * Transform2D(0.0, torso_c) * tilt * Transform2D().scaled(CHEST_SCALE) * Transform2D(0.0, -torso_c))
+	var vest := _offset(PackedVector2Array([Vector2(-12.0, -15.0), Vector2(11.0, -15.0), Vector2(13.0, -8.0),
+		Vector2(11.0, 15.0), Vector2(-11.0, 15.0), Vector2(-13.0, -8.0)]), torso_c)
+	if outline:
+		_poly_outline(vest)
+		draw_colored_polygon(vest, Palette.OUTLINE)
+	else:
+		draw_colored_polygon(vest, primary)
+		# shading bands: lit chest, shadowed flank and waist
+		draw_colored_polygon(_offset(PackedVector2Array([Vector2(-12.0, -15.0), Vector2(11.0, -15.0), Vector2(12.0, -11.0), Vector2(-12.5, -11.0)]), torso_c), primary.lightened(0.3))
+		draw_colored_polygon(_offset(PackedVector2Array([Vector2(-11.5, 6.0), Vector2(11.5, 6.0), Vector2(11.0, 15.0), Vector2(-11.0, 15.0)]), torso_c), primary.darkened(0.22))
+		# chest plate with seam and rivets
+		var plate := _offset(PackedVector2Array([Vector2(-5.0, -11.0), Vector2(10.0, -11.0), Vector2(10.5, 1.0), Vector2(2.0, 4.0), Vector2(-5.5, 1.0)]), torso_c)
+		draw_colored_polygon(plate, primary.lightened(0.18))
+		draw_polyline(_offset(PackedVector2Array([Vector2(-5.5, 1.0), Vector2(2.0, 4.0), Vector2(10.5, 1.0)]), torso_c), primary.darkened(0.35), 1.2)
+		draw_line(torso_c + Vector2(-4.0, -10.0), torso_c + Vector2(9.0, -10.0), Color(1, 1, 1, 0.35), 1.2)
+		for rv in [Vector2(-3.0, -8.5), Vector2(8.0, -8.5)]:
+			draw_circle(torso_c + rv, 0.9, primary.darkened(0.45))
+		# shoulder pad
+		draw_circle(torso_c + Vector2(1.0, -13.0), 6.5, secondary.lightened(0.08))
+		draw_arc(torso_c + Vector2(1.0, -13.0), 5.0, PI * 1.1, PI * 1.8, 6, Color(1, 1, 1, 0.25), 1.4)
+		# belt with buckle and pouches
+		draw_rect(Rect2(torso_c + Vector2(-12.0, 11.0), Vector2(24.0, 4.5)), secondary)
+		draw_rect(Rect2(torso_c + Vector2(-2.5, 11.0), Vector2(5.0, 4.5)), Palette.SKYRA_TRIM)
+		draw_rect(Rect2(torso_c + Vector2(-1.0, 12.2), Vector2(2.0, 2.1)), Palette.SKYRA_TRIM.darkened(0.45))
+		for px in [-10.0, 5.0]:
+			draw_rect(Rect2(torso_c + Vector2(px, 9.0), Vector2(5.0, 6.5)), secondary.darkened(0.2))
+			draw_rect(Rect2(torso_c + Vector2(px, 9.0), Vector2(5.0, 1.6)), secondary.lightened(0.2))
 	draw_set_transform_matrix(_current_body())
 	# Front leg
 	_leg(HIP_FRONT + Vector2(0.0, p.hip_drop), p.thigh_f, p.knee_f, secondary.lightened(0.12), outline)
@@ -301,8 +351,12 @@ func _draw_head(p: Dictionary, outline: bool) -> void:
 	# Head + helmet + visor + decoration
 	var head_rot := clampf(0.3 * _aim_facing(), -15.0 * DEG, 15.0 * DEG)
 	var neck := Vector2(1.0, -61.0) + drop
-	draw_set_transform_matrix(_current_body() * Transform2D(head_rot + lean, neck) * Transform2D(0.0, -neck))
 	var hc := Vector2(2.0, -71.0) + drop
+	# Realistic proportions: the helmet is drawn at 84 % around its centre (top of the
+	# helmet stays near the 84-wu collision height), the chest is widened in _draw_rig.
+	var head_scale := Transform2D(0.0, hc) * Transform2D().scaled(Vector2(HEAD_SCALE, HEAD_SCALE)) * Transform2D(0.0, -hc)
+	var hc_low := Vector2(0.0, 3.0)
+	draw_set_transform_matrix(_current_body() * Transform2D(head_rot + lean, neck) * Transform2D(0.0, -neck) * Transform2D(0.0, hc_low) * head_scale)
 	_circle(hc, 13.0, secondary, outline)
 	_draw_helmet(hc, outline)
 	draw_set_transform_matrix(_current_body())
@@ -325,13 +379,23 @@ func _draw_helmet(hc: Vector2, outline: bool) -> void:
 		pts.append(shell + Vector2(cos(a), sin(a)) * 15.0)
 	pts.append(shell + Vector2(4.0, 2.0))
 	draw_colored_polygon(pts, primary)
+	# lower-rear shadow and a soft top sheen give the shell volume
+	draw_arc(shell, 12.5, PI * 0.55, PI * 1.0, 8, primary.darkened(0.3), 4.0)
 	draw_arc(shell, 11.5, PI * 1.05, PI * 1.6, 8, primary.lightened(0.35), 2.5)
+	draw_circle(shell + Vector2(-5.0, -8.0), 2.0, Color(1, 1, 1, 0.35))
+	# ear guard bolt and a rim line
+	draw_circle(shell + Vector2(-6.0, 2.0), 3.2, secondary)
+	draw_circle(shell + Vector2(-6.0, 2.0), 1.2, primary.lightened(0.3))
+	draw_arc(shell, 14.0, PI * 0.55, PI * 0.95, 6, secondary, 2.0)
 	_draw_helmet_deco(hc, false)
-	# Visor + highlight + glow
+	# Wrap-around visor: dark tint, bright reflection band, glow
 	var vc := hc + Vector2(6.0, 0.0)
-	draw_rect(Rect2(vc - Vector2(8.0, 4.5), Vector2(16.0, 9.0)).grow(OUTLINE_W * 0.6), Palette.OUTLINE)
-	draw_rect(Rect2(vc - Vector2(8.0, 4.5), Vector2(16.0, 9.0)), visor)
-	draw_line(hc + Vector2(3.0, -3.0), hc + Vector2(11.0, -3.0), Color(1, 1, 1, 0.6), 1.5)
+	var vr := Rect2(vc - Vector2(8.0, 4.5), Vector2(16.0, 9.0))
+	draw_rect(vr.grow(OUTLINE_W * 0.6), Palette.OUTLINE)
+	draw_rect(vr, visor.darkened(0.25))
+	draw_rect(Rect2(vr.position, Vector2(vr.size.x, vr.size.y * 0.55)), visor)
+	draw_line(vr.position + Vector2(2.0, 2.0), vr.position + Vector2(12.0, 2.0), Color(1, 1, 1, 0.75), 1.5)
+	draw_line(vr.position + Vector2(10.0, 6.5), vr.position + Vector2(14.5, 6.5), Color(1, 1, 1, 0.35), 1.0)
 	Palette.draw_glow(self, vc, 18.0, Color(visor, 0.45))
 
 func _draw_helmet_deco(hc: Vector2, outline: bool) -> void:
@@ -451,8 +515,14 @@ func _draw_front_arm(_p: Dictionary, outline: bool) -> void:
 	draw_set_transform_matrix(_current_body())
 	_limb(SHOULDER + Vector2(2.0, 0.0), hand, 9.0, primary, true)
 	_limb(SHOULDER + Vector2(2.0, 0.0), hand, 9.0, primary, outline)
+	var elbow := (SHOULDER + Vector2(2.0, 0.0)).lerp(hand, 0.5)
+	if not outline:
+		draw_circle(elbow, 4.6, secondary.darkened(0.25))
+		draw_circle(elbow + Vector2(-0.8, -1.2), 1.8, Color(1, 1, 1, 0.2))
 	_circle(hand, 5.0, secondary, true)
 	_circle(hand, 5.0, secondary, false)
+	if not outline:
+		draw_circle(hand + Vector2(-1.0, -1.5), 2.0, secondary.lightened(0.3))
 
 # ── Effects ──────────────────────────────────────────────────────────────────────
 

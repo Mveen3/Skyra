@@ -18,6 +18,7 @@ class Prim:
 	var pts: PackedVector2Array = PackedVector2Array() # polygon / polyline / arc points
 	var center: Vector2 = Vector2.ZERO
 	var radius: float = 0.0
+	var detail: bool = false # fine detail: no thick outline, no auto-shading
 
 static var _cache: Dictionary = {} # weapon id -> Array[Prim]
 static var _bounds: Dictionary = {} # weapon id -> Rect2
@@ -62,6 +63,7 @@ static func prims(weapon_id: StringName) -> Array:
 		var p := Prim.new()
 		p.type = str(d.get("type", ""))
 		p.tag = str(d.get("tag", ""))
+		p.detail = bool(d.get("detail", false))
 		var alpha := float(d.get("alpha", 1.0))
 		if d.has("fill"):
 			p.fill = _color(str(d["fill"]), alpha)
@@ -245,6 +247,14 @@ static func _group_bounds(list: Array) -> Rect2:
 			margin = maxf(margin, p.width * 0.5 + OUTLINE_W + 2.0)
 	return r.grow(margin)
 
+static func _pts_bounds(pts: PackedVector2Array) -> Rect2:
+	if pts.is_empty():
+		return Rect2()
+	var r := Rect2(pts[0], Vector2.ZERO)
+	for q in pts:
+		r = r.expand(q)
+	return r
+
 static func _hex(c: Color) -> String:
 	return "#" + c.to_html(false)
 
@@ -262,6 +272,8 @@ static func _svg(list: Array, r: Rect2, scale: float) -> String:
 	var oc := _hex(Palette.OUTLINE)
 	# Outline pass: every filled shape stroked 2 x 2.5 wu underneath, thick strokes widened
 	for p: Prim in list:
+		if p.detail:
+			continue
 		match p.type:
 			"rect", "poly", "circle":
 				if p.has_fill:
@@ -271,13 +283,28 @@ static func _svg(list: Array, r: Rect2, scale: float) -> String:
 					out.append('<polyline points="%s" fill="none" stroke="%s" stroke-width="%.2f" stroke-linecap="round" stroke-linejoin="round"/>' % [_pts_attr(p.pts), oc, p.width + OUTLINE_W * 2.0])
 		if p.tag == "disk" and p.radius >= 10.0 and p.has_fill:
 			out.append('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s"/>' % [p.center.x, p.center.y, p.radius + 3.0 + OUTLINE_W, oc])
-	# Fill pass
+	# Fill pass. Solid shapes get a top-lit gradient (bright top edge, shadowed
+	# underside) and a thin specular line, so metal, wood and polymer read as 3-D.
+	var gi := 0
 	for p: Prim in list:
 		match p.type:
 			"rect", "poly", "circle":
 				var fill_attr := 'fill="%s" fill-opacity="%.3f"' % [_hex(p.fill), p.fill.a] if p.has_fill else 'fill="none"'
+				var bb := _pts_bounds(p.pts)
+				if not p.detail and p.has_fill and p.fill.a > 0.6 and bb.size.y >= 2.5 and bb.size.x >= 2.5:
+					gi += 1
+					var gid := "g%d" % gi
+					var top := p.fill.lightened(0.38)
+					var mid := p.fill
+					var low := p.fill.darkened(0.42)
+					out.append('<defs><linearGradient id="%s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="%s"/><stop offset="0.22" stop-color="%s"/><stop offset="0.55" stop-color="%s"/><stop offset="1" stop-color="%s"/></linearGradient></defs>' % [gid, _hex(top), _hex(p.fill.lightened(0.12)), _hex(mid), _hex(low)])
+					fill_attr = 'fill="url(#%s)" fill-opacity="%.3f"' % [gid, p.fill.a]
 				var stroke_attr := ' stroke="%s" stroke-opacity="%.3f" stroke-width="%.2f"' % [_hex(p.stroke), p.stroke.a, p.width] if p.has_stroke else ""
 				out.append('<polygon points="%s" %s%s/>' % [_pts_attr(p.pts), fill_attr, stroke_attr])
+				if not p.detail and p.has_fill and p.fill.a > 0.6 and bb.size.x >= 8.0 and bb.size.y >= 4.0:
+					# specular glint along the upper edge
+					var y := bb.position.y + minf(1.6, bb.size.y * 0.2)
+					out.append('<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#FFFFFF" stroke-opacity="0.32" stroke-width="0.9" stroke-linecap="round"/>' % [bb.position.x + bb.size.x * 0.12, y, bb.position.x + bb.size.x * 0.82, y])
 			"line", "polyline", "arc":
 				out.append('<polyline points="%s" fill="none" stroke="%s" stroke-opacity="%.3f" stroke-width="%.2f" stroke-linecap="round" stroke-linejoin="round"/>' % [_pts_attr(p.pts), _hex(p.stroke), p.stroke.a, p.width])
 		if p.tag == "disk" and p.radius >= 10.0 and p.has_fill:
@@ -300,7 +327,7 @@ static func draw_vector(canvas: CanvasItem, weapon_id: StringName, xf: Transform
 	# Outline pass (under everything)
 	if outline:
 		for p: Prim in list:
-			if not _tag_visible(p, anim):
+			if p.detail or not _tag_visible(p, anim):
 				continue
 			canvas.draw_set_transform_matrix(xf * _tag_xform(p, anim))
 			_draw_outline(canvas, p, outline_col)
