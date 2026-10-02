@@ -6,3 +6,5 @@ tools/bin/
 *.bak
 .sfx_cache/
 
+# Local scratch probes
+tests/scratch/
