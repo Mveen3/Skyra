@@ -63,7 +63,7 @@ Beacon Crown or the Reactor Heart — never two at once. A Pacing Director lets 
 ## Tests and tools
 
 ```bash
-./tools/bin/godot --headless --path . -- --selftest                 # 114 tests, ~20 s, writes docs/TEST_REPORT.md
+./tools/bin/godot --headless --path . -- --selftest                 # 116 tests, ~20 s, writes docs/TEST_REPORT.md
 ./tools/bin/godot --headless --path . -- --selftest --only=test_ai  # one test file
 ./tools/bin/godot --headless --path . -- --soak=180 --seed=1234 --bots=7 --mode=mini_post
 ./tools/bin/godot --headless --path . -- --soak=120 --seed=99 --bots=5 --mode=sniper_post

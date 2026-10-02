@@ -73,3 +73,16 @@ func test_final_04_determinism_s02() -> void:
 		Assertions.assert_eq(hashes1[i], hashes2[i], "State hash at tick %d matches" % (i * 60))
 
 	Assertions.assert_eq(final_hash1, final_hash2, "Final state hash matches after 900 ticks")
+
+func test_final_05_build() -> void:
+	# T-FINAL-05 (only if templates are installed and tools/build_linux.sh was run):
+	# the exported binary exists and is < 150 MB. Running its own --selftest is done by
+	# the owner (it cannot be launched from inside this test run).
+	var path := ProjectSettings.globalize_path("res://build/linux/Skyra.x86_64")
+	if OS.has_feature("template") or not FileAccess.file_exists(path):
+		Assertions.assert_true(true, "No local export build: skipped")
+		return
+	var f := FileAccess.open(path, FileAccess.READ)
+	var mb := float(f.get_length()) / (1024.0 * 1024.0)
+	f.close()
+	Assertions.assert_true(mb < 150.0, "Exported binary %.1f MB < 150 MB" % mb)
