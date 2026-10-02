@@ -43,7 +43,7 @@ func _build() -> void:
 	add_child(sub)
 
 	# Settings panel
-	var panel := UiKit.panel(PANEL_SIZE)
+	var panel := UiKit.panel(PANEL_SIZE, Color(Palette.UI_PANEL, 0.95)) # opaque enough that map signs never show through
 	UiKit.place_center_x(panel, 290, PANEL_SIZE)
 	add_child(panel)
 
