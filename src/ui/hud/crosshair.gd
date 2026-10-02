@@ -192,7 +192,9 @@ func _edge_marker(world: Vector2, col: Color, label: String) -> void:
 	if not label.is_empty():
 		var f := ThemeFactory.body_font()
 		var w := f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
-		var lp := e - dir * 34.0 - Vector2(w * 0.5, -6.0)
+		# Centre the label inward from the arrow, far enough that it never overlaps it
+		var inset := 30.0 + absf(dir.x) * w * 0.5 + absf(dir.y) * 14.0
+		var lp := e - dir * inset - Vector2(w * 0.5, -6.0)
 		lp.x = clampf(lp.x, 8.0, size.x - w - 8.0)
 		draw_string_outline(f, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0.04, 0.05, 0.1, 0.8))
 		draw_string(f, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, col)
