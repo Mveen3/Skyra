@@ -34,6 +34,8 @@ func test_set_01_round_trip() -> void:
 	Assertions.assert_eq(store2.binding(&"jetpack")[0], "Key:Space", "Keybinding preserved")
 
 	OS.set_environment("SKYRA_CONFIG_DIR", "")
+	store.free()
+	store2.free()
 
 func test_set_02_missing_file() -> void:
 	var dir := _setup_test_dir("missing")
@@ -47,6 +49,7 @@ func test_set_02_missing_file() -> void:
 	Assertions.assert_near(float(store.data.audio["master"]), 0.9, 0.01, "Default master volume is 0.9")
 
 	OS.set_environment("SKYRA_CONFIG_DIR", "")
+	store.free()
 
 func test_set_03_corrupt_file() -> void:
 	var dir := _setup_test_dir("corrupt")
@@ -77,6 +80,7 @@ func test_set_03_corrupt_file() -> void:
 	Assertions.assert_true(found_backup, "Backup settings.json.corrupt-<ts> was created")
 
 	OS.set_environment("SKYRA_CONFIG_DIR", "")
+	store.free()
 
 func test_set_04_path_resolution() -> void:
 	# 1. SKYRA_CONFIG_DIR override
@@ -99,6 +103,9 @@ func test_set_04_path_resolution() -> void:
 	var s3 := SettingsStore.new()
 	var default_path := s3.config_path()
 	Assertions.assert_true(default_path.ends_with("/.config/skyra/settings.json"), "Default path ends with /.config/skyra/settings.json")
+	s1.free()
+	s2.free()
+	s3.free()
 
 func test_set_05_conflict_swap() -> void:
 	var dir := _setup_test_dir("conflict")
@@ -115,6 +122,7 @@ func test_set_05_conflict_swap() -> void:
 	Assertions.assert_eq(store.binding(&"pickup_swap")[0], "key:R", "pickup_swap moved to key:R")
 
 	OS.set_environment("SKYRA_CONFIG_DIR", "")
+	store.free()
 
 func test_set_06_input_map() -> void:
 	var dir := _setup_test_dir("inputmap")
@@ -134,6 +142,7 @@ func test_set_06_input_map() -> void:
 	Assertions.assert_true(triggers_jetpack, "Physical W key event triggers jetpack action")
 
 	OS.set_environment("SKYRA_CONFIG_DIR", "")
+	store.free()
 
 func test_set_07_atomic_write() -> void:
 	var dir := _setup_test_dir("atomic")
@@ -156,3 +165,4 @@ func test_set_07_atomic_write() -> void:
 	Assertions.assert_true(typeof(json) == TYPE_DICTIONARY, "Settings file contains valid JSON")
 
 	OS.set_environment("SKYRA_CONFIG_DIR", "")
+	store.free()

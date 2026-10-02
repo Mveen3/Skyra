@@ -58,6 +58,7 @@ func test_flow_01_full_flow() -> void:
 	# "Change Setup" (Esc) in SCORE_SUMMARY -> PRESET_MENU
 	_simulate_key(flow, KEY_ESCAPE)
 	Assertions.assert_eq(flow.state, Enums.GameState.PRESET_MENU, "Esc in summary triggers PRESET_MENU (Change Setup)")
+	flow.free()
 
 func test_flow_02_one_key_start() -> void:
 	# T-FLOW-02: Enter on preset screen yields MatchConfig(mini_post, 5, 420)
@@ -70,6 +71,7 @@ func test_flow_02_one_key_start() -> void:
 	Assertions.assert_eq(flow.current_config.mode, &"mini_post", "Default mode is mini_post")
 	Assertions.assert_eq(flow.current_config.bot_count, 5, "Default bot count is 5")
 	Assertions.assert_eq(flow.current_config.duration_s, 420, "Default duration is 420 s (7 min)")
+	flow.free()
 
 func test_flow_03_timer_durations() -> void:
 	# T-FLOW-03: accelerated matches of 5 and 10 minutes end at duration_s ± 1 tick
@@ -89,6 +91,7 @@ func test_flow_03_timer_durations() -> void:
 
 		Assertions.assert_near(total_active_time, float(duration), DT * 1.5, "Match of %d s ends within ±1 tick" % duration)
 		Assertions.assert_eq(flow.state, Enums.GameState.MATCH_ENDED, "Transitions to MATCH_ENDED")
+		flow.free()
 
 func test_flow_04_restart_shortcut() -> void:
 	# T-FLOW-04: F5 then F5/Enter restarts; Esc cancels
@@ -120,6 +123,7 @@ func test_flow_04_restart_shortcut() -> void:
 	Assertions.assert_true(flow.restart_prompt_active)
 	_simulate_key(flow, KEY_ENTER)
 	Assertions.assert_eq(flow.state, Enums.GameState.MATCH_LOADING, "Enter confirms restart prompt")
+	flow.free()
 
 func test_flow_05_focus_loss() -> void:
 	# T-FLOW-05: focus-out notification pauses
@@ -131,3 +135,4 @@ func test_flow_05_focus_loss() -> void:
 
 	flow.on_focus_lost()
 	Assertions.assert_eq(flow.state, Enums.GameState.PAUSED, "Focus loss triggers PAUSED")
+	flow.free()

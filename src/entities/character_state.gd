@@ -45,7 +45,15 @@ var stats: CombatStats = null
 var streak: int = 0
 var multi_kill_count: int = 0
 var multi_kill_t: float = 0.0
-var brain: RefCounted = null
+## The BotBrain driving this character, held weakly: the brain references its
+## character, so a strong link both ways would leak every finished match. The owner
+## (MatchSim.brains, the Autopilot, or a test) keeps the brain alive.
+var brain: RefCounted:
+	get:
+		return _brain_ref.get_ref() as RefCounted if _brain_ref else null
+	set(value):
+		_brain_ref = weakref(value) if value else null
+var _brain_ref: WeakRef = null
 var perception: Perception = null
 var death_pos: Vector2 = Vector2(-99999.0, -99999.0)
 var landing_speed: float = 0.0

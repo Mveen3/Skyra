@@ -38,6 +38,7 @@ var prof_us: Dictionary = {"physics": 0, "combat": 0, "pickups": 0, "director": 
 var time: float = 0.0
 var tick: int = 0
 var bot_frames: Dictionary = {} # int id -> InputFrame
+var brains: Array[BotBrain] = [] # owns the bot brains (CharacterState.brain is weak)
 
 func setup(p_config: MatchConfig) -> void:
 	config = p_config
@@ -67,6 +68,7 @@ func setup(p_config: MatchConfig) -> void:
 
 	# Bots (ids 1..N)
 	bot_chars.clear()
+	brains.clear()
 	var bot_profiles: Array = Data.bots
 	var bot_ids: Array[int] = []
 	for i in range(min(config.bot_count, bot_profiles.size())):
@@ -81,6 +83,7 @@ func setup(p_config: MatchConfig) -> void:
 
 		var brain := BotBrain.new(b, config.rng_seed)
 		b.brain = brain
+		brains.append(brain)
 
 		bot_chars.append(b)
 		bot_ids.append(b.id)

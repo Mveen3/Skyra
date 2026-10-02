@@ -39,6 +39,7 @@ func test_ui_01_spin_wheel() -> void:
 	for _i in range(15):
 		wheel.on_key_input(KEY_DOWN)
 	Assertions.assert_eq(wheel.value, 5, "Lower clamp is 5")
+	wheel.free()
 
 func test_ui_02_bots_toggle() -> void:
 	# T-UI-02: Bots toggle: default 5; keys 3/5/7 select
@@ -56,6 +57,7 @@ func test_ui_02_bots_toggle() -> void:
 	# Key 5
 	toggle.on_key_input(KEY_5)
 	Assertions.assert_eq(toggle.bot_count, 5, "Key 5 selects 5 bots")
+	toggle.free()
 
 func test_ui_03_hud_model() -> void:
 	# T-UI-03: HUD model: HudModel equals Sim values every frame of a scripted run
@@ -96,3 +98,4 @@ func test_ui_04_kill_feed() -> void:
 	# Step 1.2 s more (total 5.2 s): all rows expired
 	feed.step(1.2)
 	Assertions.assert_eq(feed.row_count(), 0, "All rows expired and removed after > 5 s")
+	feed.free()
