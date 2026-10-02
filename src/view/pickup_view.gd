@@ -66,6 +66,7 @@ func _draw() -> void:
 			draw_arc(base + Vector2(0.0, -34.0), 18.0, 0.0, TAU, 32, Color(col, 0.18), 4.0)
 	for lw in sim.loose_weapons:
 		_draw_loose(lw)
+	_draw_features()
 	_draw_boost()
 
 func _draw_pedestal(base: Vector2, col: Color) -> void:
@@ -173,3 +174,75 @@ func _draw_boost() -> void:
 	draw_circle(Vector2(0, -9), 6.5, oc)
 	draw_circle(Vector2(0, -9), 5.0, Color(Palette.SKYRA_VISOR, alpha))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+
+# ── Map features: launch pads and med stations ──────────────────────────────────
+
+func _draw_features() -> void:
+	if sim.features == null:
+		return
+	for p in sim.features.pads:
+		_draw_launch_pad(p)
+	for m in sim.features.meds:
+		_draw_med_station(m)
+
+func _draw_launch_pad(p: MapFeatures.Pad) -> void:
+	var b := p.pos
+	var hw := sim.features.pad_half_width + 6.0
+	var squash := 1.0 - 0.5 * clampf(p.cool_t / 0.35, 0.0, 1.0)
+	# steel base plate with hazard stripes
+	var base := Rect2(b + Vector2(-hw, -9.0), Vector2(hw * 2.0, 9.0))
+	draw_rect(base.grow(2.0), Palette.OUTLINE)
+	draw_rect(base, Color("#3A434E"))
+	var i := 0
+	var x := base.position.x
+	while x < base.end.x - 4.0:
+		draw_colored_polygon(PackedVector2Array([Vector2(x, base.end.y), Vector2(x + 6.0, base.position.y), Vector2(x + 11.0, base.position.y), Vector2(x + 5.0, base.end.y)]), Color("#FFC53D") if i % 2 == 0 else Color("#1B1E22"))
+		x += 11.0
+		i += 1
+	# spring coils and the launch plate (compressed right after use)
+	var plate_y := b.y - 9.0 - 10.0 * squash
+	for k in range(3):
+		var yk := lerpf(b.y - 9.0, plate_y, (float(k) + 0.5) / 3.0)
+		draw_line(Vector2(b.x - hw * 0.6, yk), Vector2(b.x + hw * 0.6, yk), Color("#9AA6B2"), 2.0)
+	var plate := Rect2(Vector2(b.x - hw + 4.0, plate_y - 5.0), Vector2(hw * 2.0 - 8.0, 5.0))
+	draw_rect(plate.grow(1.5), Palette.OUTLINE)
+	draw_rect(plate, Color("#C9D1D9"))
+	draw_line(plate.position + Vector2(2.0, 1.0), Vector2(plate.end.x - 2.0, plate.position.y + 1.0), Color(1, 1, 1, 0.8), 1.0)
+	# glowing up-chevrons that pulse upward
+	for k in range(3):
+		var phase := fmod(_t * 1.6 + float(k) / 3.0, 1.0)
+		var cy := plate_y - 14.0 - phase * 46.0
+		var a := (1.0 - phase) * 0.85
+		var col := Color(0.25, 0.95, 1.0, a)
+		draw_polyline(PackedVector2Array([Vector2(b.x - 12.0, cy + 8.0), Vector2(b.x, cy), Vector2(b.x + 12.0, cy + 8.0)]), col, 3.0, true)
+	Palette.draw_glow(self, b + Vector2(0.0, -16.0), 46.0, Color(0.2, 0.9, 1.0, 0.25 + 0.25 * (1.0 - squash)))
+
+func _draw_med_station(m: MapFeatures.Med) -> void:
+	var b := m.pos
+	# wall-mounted style pedestal
+	var ped := PackedVector2Array([b + Vector2(-24, 0), b + Vector2(24, 0), b + Vector2(18, -10), b + Vector2(-18, -10)])
+	draw_colored_polygon(ped, Color("#36414D"))
+	var closed: PackedVector2Array = ped.duplicate()
+	closed.append(ped[0])
+	draw_polyline(closed, Palette.OUTLINE, 2.5, true)
+	var c := b + Vector2(0.0, -34.0 + 3.0 * sin(_t * 2.4))
+	if m.active:
+		Palette.draw_glow(self, c, 44.0, Color(0.35, 1.0, 0.45, 0.35))
+		# first-aid case: white shell, red cross, handle, latch and highlight
+		var r := Rect2(c - Vector2(17.0, 12.0), Vector2(34.0, 24.0))
+		draw_rect(r.grow(2.5), Palette.OUTLINE)
+		draw_rect(r, Color("#F2F5F8"))
+		draw_rect(Rect2(r.position + Vector2(0.0, 16.0), Vector2(34.0, 8.0)), Color("#D3DAE1"))
+		draw_rect(Rect2(c - Vector2(3.5, 9.0), Vector2(7.0, 18.0)), Color("#E63946"))
+		draw_rect(Rect2(c - Vector2(9.0, 3.5), Vector2(18.0, 7.0)), Color("#E63946"))
+		draw_arc(c + Vector2(0.0, -12.0), 6.0, PI, TAU, 8, Color("#2A2F36"), 2.0)
+		draw_line(r.position + Vector2(3.0, 2.5), r.position + Vector2(30.0, 2.5), Color(1, 1, 1, 0.9), 1.2)
+		draw_string(ThemeDB.fallback_font, c + Vector2(-14.0, 30.0), "+%d HP" % int(sim.features.med_heal), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.6, 1.0, 0.65, 0.8))
+	else:
+		# recharge ring
+		var k := 1.0 - clampf(m.timer / maxf(0.01, sim.features.med_respawn_s), 0.0, 1.0)
+		var g := Color(0.35, 1.0, 0.45)
+		draw_arc(c, 18.0, 0.0, TAU, 32, Color(g, 0.18), 4.0)
+		draw_arc(c, 18.0, -PI * 0.5, -PI * 0.5 + TAU * k, 32, Color(g, 0.8), 4.0)
+		draw_rect(Rect2(c - Vector2(2.0, 6.0), Vector2(4.0, 12.0)), Color(g, 0.5))
+		draw_rect(Rect2(c - Vector2(6.0, 2.0), Vector2(12.0, 4.0)), Color(g, 0.5))

@@ -114,7 +114,8 @@ static func step(c: CharacterState, frame: InputFrame, dt: float, grid: TileGrid
 	var rise_cap: float = 520.0 * boost_rise
 	if c.in_updraft and not diving:
 		rise_cap = (680.0 * boost_rise) if jet_active else 380.0
-	if jet_active or (c.in_updraft and not diving):
+	c.launch_t = maxf(0.0, c.launch_t - dt)
+	if (jet_active or (c.in_updraft and not diving)) and c.launch_t <= 0.0:
 		c.vel.y = maxf(c.vel.y, -rise_cap)
 		
 	c.vel.y = minf(c.vel.y, 1300.0 if diving else 1100.0)

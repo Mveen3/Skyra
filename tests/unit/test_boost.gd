@@ -153,3 +153,42 @@ func test_boost_04_buff_and_collection() -> void:
 	human.life_state = Enums.LifeState.DEAD
 	manager.step(DT, human, [])
 	Assertions.assert_eq(human.boost_t, 0.0, "Boost buff cleared on death")
+
+## Map features (DEV-009): a launch pad throws a character from its floor to the
+## catwalk/islands above; a med station heals +45 (capped at 100) and respawns in 25 s.
+func test_boost_05_map_features() -> void:
+	var cfg := MatchConfig.new()
+	cfg.mode = &"mini_post"
+	cfg.bot_count = 3
+	cfg.rng_seed = 1
+	var sim := MatchSim.new()
+	sim.setup(cfg)
+	sim.init_match()
+	sim.begin_active()
+	for b in sim.bot_chars:
+		b.pos = Vector2(7000, 600)
+	var h := sim.human_char
+	var pad: MapFeatures.Pad = sim.features.pads[0]
+	h.pos = pad.pos
+	h.vel = Vector2.ZERO
+	var f := InputFrame.new()
+	f.aim_world = h.pos + Vector2(300, 0)
+	var peak := h.pos.y
+	for i in range(90):
+		sim.step(1.0 / 60.0, f)
+		peak = minf(peak, h.pos.y)
+	Assertions.assert_true(pad.pos.y - peak > 448.0, "Launch pad lifts above the catwalk 448 wu up (got %.0f)" % (pad.pos.y - peak))
+
+	var med: MapFeatures.Med = sim.features.meds[0]
+	h.pos = med.pos
+	h.vel = Vector2.ZERO
+	h.health = 30.0
+	h.regen_delay_t = 99.0
+	sim.step(1.0 / 60.0, f)
+	Assertions.assert_near(h.health, 75.0, 0.5, "Med station heals +45")
+	Assertions.assert_true(not med.active, "Med station is used up")
+	h.health = 90.0
+	for i in range(int(25.0 * 60.0) + 2):
+		sim.features.step(1.0 / 60.0, [])
+	Assertions.assert_true(med.active, "Med station respawns after 25 s")
+	sim.teardown()

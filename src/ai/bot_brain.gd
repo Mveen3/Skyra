@@ -41,6 +41,7 @@ var human_slow_t: float = 0.0 # how long the visible Skyra has moved < 100 wu/s 
 
 # Item seeking (§5.9)
 var sockets_ref: WeaponSocketManager = null
+var features_ref: MapFeatures = null # med stations (set by MatchSim)
 var item_goal_active: bool = false
 var item_goal_pos: Vector2 = Vector2.ZERO
 var item_goal_id: StringName = &""
@@ -235,6 +236,12 @@ func _think_fsm(human: CharacterState, tile_grid: TileGrid, nav_grid: NavGrid,
 			if not has_token:
 				state = Enums.BotState.HOLD
 				_pick_hold_point(human, tac, director, nav_grid, tile_grid)
+			elif bot.health < 35.0 and _med_goal(human) != Vector2(-1.0, -1.0):
+				# Badly hurt and a med station is nearer to us than to Skyra: go heal
+				state = Enums.BotState.SEEK_COVER
+				goal_pos = _med_goal(human)
+				goal_timer = 0.0
+				_request_path_to(goal_pos, nav_grid, tile_grid)
 			elif bot.health < 35.0:
 				var cover_pt := tac.find_cover(bot, human, tile_grid, nav_grid)
 				if cover_pt.distance_to(bot.pos) > 10.0:
@@ -398,6 +405,14 @@ func _item_still_there(loose_pickups: Array) -> bool:
 			item_goal_pos = l.centre()
 			return true
 	return false
+
+func _med_goal(human: CharacterState) -> Vector2:
+	if features_ref == null:
+		return Vector2(-1.0, -1.0)
+	var m := features_ref.nearest_active_med(bot.pos, 900.0)
+	if m.x < 0.0 or (human and human.pos.distance_to(m) < bot.pos.distance_to(m)):
+		return Vector2(-1.0, -1.0)
+	return m
 
 func _update_engage_goal(human: CharacterState) -> void:
 	var active_w := bot.inventory.active_weapon() if bot.inventory else null

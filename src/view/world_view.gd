@@ -66,6 +66,17 @@ func setup(p_sim: MatchSim, p_grid: TileGrid) -> void:
 	decor.setup(grid)
 	add_child(decor)
 
+	# Sniper Post night: moonlit clouds and a cool tint on the map (lights stay bright),
+	# plus drifting ground fog in front of the far layers.
+	if sim and sim.config and sim.config.mode == &"sniper_post":
+		sky.apply_theme(true)
+		parallax.modulate = Color(0.42, 0.5, 0.85)
+		backdrop_root.modulate = Color(0.68, 0.74, 0.95)
+		tiles_root.modulate = Color(0.78, 0.83, 1.0)
+		var fog := NightFog.new()
+		fog.z_index = C.Z_FAR_ISLANDS + 1
+		add_child(fog)
+
 	pickups = PickupView.new()
 	pickups.z_index = C.Z_PICKUPS
 	add_child(pickups)

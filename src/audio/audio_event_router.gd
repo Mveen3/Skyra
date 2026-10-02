@@ -64,6 +64,8 @@ func bind(p_sim: MatchSim) -> void:
 	_link(EventBus.weapon_picked_up, _on_picked_up)
 	_link(EventBus.weapon_dropped, _on_dropped)
 	_link(EventBus.frag_pack_collected, _on_frag_pack)
+	_link(EventBus.launch_pad_used, _on_launch_pad)
+	_link(EventBus.med_collected, _on_med_collected)
 	_link(EventBus.projectile_impact, _on_impact)
 	_link(EventBus.near_miss, _on_near_miss)
 	_link(EventBus.jetpack_state_changed, _on_jetpack)
@@ -216,6 +218,13 @@ func _on_picked_up(id: int, _w: StringName, _socket: StringName) -> void:
 
 func _on_dropped(id: int, _w: StringName, pos: Vector2) -> void:
 	get_audio().play(&"sfx.weapon.drop", pos, {"is_skyra": id == 0})
+
+func _on_launch_pad(id: int, pad_pos: Vector2) -> void:
+	get_audio().play(&"sfx.updraft.enter", pad_pos, {"is_skyra": id == 0, "pitch_scale": 0.8})
+	get_audio().play(&"sfx.jetpack.start", pad_pos, {"is_skyra": id == 0, "pitch_scale": 0.7})
+
+func _on_med_collected(id: int, station_pos: Vector2, _heal: float) -> void:
+	get_audio().play(&"sfx.reload.energy_charge", station_pos, {"is_skyra": id == 0, "pitch_scale": 1.3})
 
 func _on_frag_pack(id: int, _amount: int) -> void:
 	get_audio().play(&"sfx.weapon.pickup", _pos_of(id), {"is_skyra": id == 0, "pitch_scale": 1.2})

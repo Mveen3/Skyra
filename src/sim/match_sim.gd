@@ -18,6 +18,7 @@ var beams: BeamSystem
 var damage_system: DamageSystem
 var sockets: WeaponSocketManager
 var boost: RocketBoostManager
+var features: MapFeatures
 var director: PacingDirector
 var rules: MatchRules
 var motor: CharacterMotor
@@ -105,6 +106,10 @@ func setup(p_config: MatchConfig) -> void:
 	sockets = WeaponSocketManager.new()
 	sockets.setup(Data.map.sockets, config.mode, rng_streams.rng_loot)
 
+	features = MapFeatures.new()
+	features.setup(Data.tuning)
+	for br in brains:
+		br.features_ref = features
 	boost = RocketBoostManager.new()
 	boost.setup(Data.map.sockets, rng_streams.rng_loot)
 
@@ -286,6 +291,7 @@ func step(dt: float, human_frame: InputFrame) -> void:
 	_step_pickups(human_frame)
 	sockets.step(dt, characters, rng_streams.rng_loot)
 	boost.step(dt, human_char, bot_chars)
+	features.step(dt, characters)
 	_step_loose_weapons(dt)
 
 	# 2.9 MatchRules.step

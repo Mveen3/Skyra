@@ -144,5 +144,59 @@
       "10": "UNSTOPPABLE",
       "15": "LEGENDARY"
     }
+  },
+  "map_features": {
+    "launch_pads": [
+      {
+        "id": "pad_w",
+        "cell": [
+          35,
+          21
+        ]
+      },
+      {
+        "id": "pad_e",
+        "cell": [
+          84,
+          21
+        ]
+      }
+    ],
+    "launch_speed": 1750.0,
+    "launch_lock_s": 0.6,
+    "pad_half_width": 34.0,
+    "med_stations": [
+      {
+        "id": "med_hangar_w",
+        "cell": [
+          46,
+          28
+        ]
+      },
+      {
+        "id": "med_hangar_e",
+        "cell": [
+          73,
+          28
+        ]
+      },
+      {
+        "id": "med_tunnel_w",
+        "cell": [
+          28,
+          39
+        ]
+      },
+      {
+        "id": "med_tunnel_e",
+        "cell": [
+          91,
+          39
+        ]
+      }
+    ],
+    "med_heal": 45.0,
+    "med_respawn_s": 25.0,
+    "med_radius": 52.0
   }
 }

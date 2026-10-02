@@ -60,10 +60,18 @@ Magnum … 5x Black Arrow), and a **Rocket Boost** (infinite jetpack, more speed
 drops 45 s into the match and again 35–50 s after each one is taken or expires, at the
 Beacon Crown or the Reactor Heart — never two at once. A Pacing Director lets at most two bots attack you at the same time.
 
+## Map features
+
+- **Launch pads** on both wings of the Spire fling you up past the catwalk to the
+  floating islands (hold jet to go even higher).
+- **Med stations** in both hangars and both lower tunnels heal +45 HP and recharge in
+  25 s — bots use them too when badly hurt.
+- **Two looks**: Mini Post plays at golden sunset, Sniper Post under a moonlit night sky.
+
 ## Tests and tools
 
 ```bash
-./tools/bin/godot --headless --path . -- --selftest                 # 116 tests, ~20 s, writes docs/TEST_REPORT.md
+./tools/bin/godot --headless --path . -- --selftest                 # 117 tests, ~20 s, writes docs/TEST_REPORT.md
 ./tools/bin/godot --headless --path . -- --selftest --only=test_ai  # one test file
 ./tools/bin/godot --headless --path . -- --soak=180 --seed=1234 --bots=7 --mode=mini_post
 ./tools/bin/godot --headless --path . -- --soak=120 --seed=99 --bots=5 --mode=sniper_post

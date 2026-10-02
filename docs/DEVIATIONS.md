@@ -49,3 +49,26 @@ This document logs intentional technical decisions and adjustments made during t
 - Reason: without it S-01 "Rocket Boost spawned ≥ 3" depends on luck; the game itself is unchanged.
 - Invariants checked: 2.6.2 #7
 - Tests: S-01 (seeds 1234, 1–5), S-01b
+
+## DEV-009: Map features and mode atmospheres (owner request)
+- Section(s): §6 (map), §3.11, §7.2
+- Change: Outpost Skyra gains two launch pads (Spire wings, cells (35,21) and (84,21):
+  launch 1750 wu/s, rise caps suspended for 0.6 s) and four med stations (both hangars,
+  both tunnels: +45 HP, respawn 25 s; bots below 35 HP go to one when it is nearer to
+  them than to Skyra). Sniper Post is rendered as a moonlit night (sky palette, extra
+  stars, moonlit clouds, cool map tint, drifting fog); Mini Post keeps the sunset.
+  All values live in tuning.json `map_features`.
+- Reason: the owner asked for a more interesting map and for the two modes to feel
+  like two different maps. The tile blueprint, sockets and nav graph are unchanged.
+- Invariants checked: 2.6.2 #2 (blueprint/sockets unchanged), #3, #7
+- Tests: T-MAP-01…07, T-NAV-01…04, test_boost_05_map_features, S-01, S-01b
+
+## DEV-010: Art upgrade (owner request)
+- Section(s): §7.4, §7.5
+- Change: weapons get per-part gradient shading, specular glints and fine detail parts
+  (`"detail": true`, no outline; tools/art_details.py); the frag is a pineapple grenade;
+  the Frag Pack is an ammo crate; characters are armoured (chest plate, belt, pads,
+  boots, twin-tank jetpack, glossy visor) with helmet 84 % / chest 115 % proportions.
+- Reason: owner asked for more eye-catching, realistic art. Collision boxes unchanged.
+- Invariants checked: 2.6.2 #4 (IDs, names), #7
+- Tests: all

@@ -37,6 +37,7 @@ var respawn_t: float = 0.0
 var stealth_t: float = 0.0
 var invuln_t: float = 0.0
 var boost_t: float = 0.0
+var launch_t: float = 0.0 # launch-pad flight: rise caps are suspended while > 0
 var burn_t: float = 0.0
 var burn_tick_t: float = 0.0
 var burn_source: int = -1
@@ -90,6 +91,7 @@ func reset_for_spawn(spawn_pos: Vector2) -> void:
 	last_enemy_damage_time = -99.0
 	respawn_t = 0.0
 	stealth_t = 0.0
+	launch_t = 0.0
 	invuln_t = 0.0
 	boost_t = 0.0
 	burn_t = 0.0
