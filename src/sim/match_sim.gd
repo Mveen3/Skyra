@@ -27,7 +27,6 @@ var human_view_rect: Rect2 = Rect2() # fed by the camera; zero size = approximat
 var bot_respawns: int = 0          # bot respawns this match (initial spawns excluded)
 var bot_spawn_fallbacks: int = 0   # ... of which needed spawn tier >= 3 (§6.7, INV-6)
 
-const HUMAN_STEALTH_S: float = 2.0
 const LOOSE_WEAPON_CAP: int = 12
 var _next_loose_id: int = 1
 var _empty_frame: InputFrame = InputFrame.new()
@@ -174,9 +173,10 @@ func _spawn_at(c: CharacterState, s: SocketDef, initial: bool) -> void:
 	c.reset_for_spawn(s.world)
 	WeaponLogic.give_spawn_loadout(c, config.mode)
 	if c.is_human:
-		c.stealth_t = HUMAN_STEALTH_S
-		c.invuln_t = HUMAN_STEALTH_S
-		EventBus.stealth_started.emit(c.id, HUMAN_STEALTH_S)
+		var r: Dictionary = Data.tuning.get("respawn", {})
+		c.stealth_t = float(r.get("human_stealth_s", 2.0))
+		c.invuln_t = float(r.get("human_invuln_s", 2.0))
+		EventBus.stealth_started.emit(c.id, c.stealth_t)
 	else:
 		last_bot_spawns[s.id] = time
 		if c.brain and c.brain.has_method("on_respawn"):

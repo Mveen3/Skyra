@@ -10,13 +10,14 @@ const MAX_HEALTH: float = 100.0
 const REGEN_DELAY_S: float = 4.0
 const REGEN_PER_S: float = 15.0
 const KILL_CREDIT_WINDOW_S: float = 5.0
-const BOT_TO_HUMAN_MULT: float = 0.85
 const BURN_DPS: float = 10.0
 const BURN_DURATION: float = 3.0
 const BURN_TICK_S: float = 0.25
 const BURN_TICK_DMG: float = 2.5 # 10.0 * 0.25
-const HUMAN_RESPAWN_S: float = 2.0
-const BOT_RESPAWN_S: float = 3.0
+# Appendix A (tuning.json): respawn delays and the bot -> Skyra damage multiplier
+var human_respawn_s: float = 2.0
+var bot_respawn_s: float = 3.0
+var bot_to_human_mult: float = 0.85
 
 class QueuedDamage:
 	var target_id: int
@@ -32,6 +33,14 @@ class QueuedDamage:
 	var shot_id: int = -1
 
 var damage_queue: Array[QueuedDamage] = []
+
+
+func _init() -> void:
+	var t: Dictionary = Data.tuning if Data.tuning else {}
+	var r: Dictionary = t.get("respawn", {})
+	human_respawn_s = float(r.get("human_delay_s", human_respawn_s))
+	bot_respawn_s = float(r.get("bot_delay_s", bot_respawn_s))
+	bot_to_human_mult = float(t.get("damage", {}).get("bot_to_human_mult", bot_to_human_mult))
 
 func queue_damage(target: CharacterState, source_id: int, source_team: int, weapon_id: String,
                  amount: float, hit_point: Vector2 = Vector2.ZERO, hit_dir: Vector2 = Vector2.RIGHT,
@@ -85,7 +94,7 @@ func flush(characters_by_id: Dictionary, now: float) -> void:
 
 		# Rule 4: Bot to human scaling
 		if q.source_team == Enums.Team.BOT and target.is_human:
-			q.amount *= BOT_TO_HUMAN_MULT
+			q.amount *= bot_to_human_mult
 
 		# Rule 5: Apply health reduction
 		target.health -= q.amount
@@ -118,7 +127,7 @@ func flush(characters_by_id: Dictionary, now: float) -> void:
 		if target.health <= 0.0:
 			target.health = 0.0
 			target.life_state = Enums.LifeState.DEAD
-			target.respawn_t = HUMAN_RESPAWN_S if target.is_human else BOT_RESPAWN_S
+			target.respawn_t = human_respawn_s if target.is_human else bot_respawn_s
 			target.burn_t = 0.0
 			target.burn_tick_t = 0.0
 			target.jet_active = false
