@@ -60,10 +60,15 @@ static func run_all(tree: SceneTree, filter: String = "") -> void:
 				Assertions.clear_failures()
 				var t0 := Time.get_ticks_usec()
 				
+				var log_mark := _log_length()
 				instance.call(m_name)
-				
+
 				var dt_ms := (Time.get_ticks_usec() - t0) / 1000.0
-				var failed := Assertions.has_failed()
+				# A script error aborts the test function silently; treat it as a failure
+				var script_err := _script_error_since(log_mark)
+				if not script_err.is_empty():
+					Assertions.current_failures.append("script error: " + script_err)
+				var failed := Assertions.has_failed() or not script_err.is_empty()
 
 				if failed:
 					failed_tests += 1
@@ -97,3 +102,24 @@ static func run_all(tree: SceneTree, filter: String = "") -> void:
 
 	var exit_code := 0 if failed_tests == 0 else 1
 	tree.quit(exit_code)
+
+const _LOG_PATH := "user://logs/godot.log"
+
+static func _log_length() -> int:
+	var f := FileAccess.open(_LOG_PATH, FileAccess.READ)
+	return f.get_length() if f else -1
+
+## First "SCRIPT ERROR" line Godot logged after `mark` (file logging is on by default).
+static func _script_error_since(mark: int) -> String:
+	if mark < 0:
+		return ""
+	var f := FileAccess.open(_LOG_PATH, FileAccess.READ)
+	if f == null or f.get_length() <= mark:
+		return ""
+	f.seek(mark)
+	var text := f.get_buffer(f.get_length() - mark).get_string_from_utf8()
+	var i := text.find("SCRIPT ERROR:")
+	if i < 0:
+		return ""
+	var line_end := text.find("\n", i)
+	return text.substr(i + 14, (line_end - i - 14) if line_end > 0 else 200).strip_edges()
