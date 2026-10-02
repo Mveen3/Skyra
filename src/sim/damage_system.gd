@@ -8,7 +8,6 @@ signal damage_applied(ev: DamageEvent, source_team: int)
 
 const MAX_HEALTH: float = 100.0
 const REGEN_DELAY_S: float = 4.0
-const REGEN_PER_S: float = 15.0
 const KILL_CREDIT_WINDOW_S: float = 5.0
 const BURN_DPS: float = 10.0
 const BURN_DURATION: float = 3.0
@@ -160,32 +159,3 @@ func _record_hit(source: CharacterState, q: QueuedDamage) -> void:
 		st.shots_hit += 1
 		if q.is_headshot:
 			st.headshots += 1
-
-func step(characters: Array, dt: float, now: float) -> void:
-	for obj in characters:
-		var c: CharacterState = obj as CharacterState
-		if not c: continue
-
-		if c.life_state == Enums.LifeState.DEAD:
-			c.respawn_t = maxf(0.0, c.respawn_t - dt)
-			continue
-
-		# Timers
-		c.stealth_t = maxf(0.0, c.stealth_t - dt)
-		c.invuln_t = maxf(0.0, c.invuln_t - dt)
-		c.boost_t = maxf(0.0, c.boost_t - dt)
-
-		# Health Regeneration
-		if c.regen_delay_t > 0.0:
-			c.regen_delay_t -= dt
-		else:
-			c.health = minf(MAX_HEALTH, c.health + REGEN_PER_S * dt)
-
-		# Blaze Burn DoT
-		if c.burn_t > 0.0:
-			c.burn_t = maxf(0.0, c.burn_t - dt)
-			c.burn_tick_t += dt
-			while c.burn_tick_t >= (BURN_TICK_S - 1e-4):
-				c.burn_tick_t -= BURN_TICK_S
-				var source_team: int = Enums.Team.HUMAN
-				queue_damage(c, c.burn_source, source_team, "flamethrower", BURN_TICK_DMG)

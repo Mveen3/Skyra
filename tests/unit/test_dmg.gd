@@ -49,27 +49,29 @@ func test_dmg_01_team_rules() -> void:
 	Assertions.assert_near(skyra.health, 100.0 - (20.0 * 0.85), 1e-4, "Bot deals 85% damage to Skyra (20 -> 17)")
 
 func test_dmg_02_regeneration() -> void:
-	var dmg_sys := DamageSystem.new()
+	# Regeneration runs in MatchRules.step (the path the match uses)
 	var c := CharacterState.new()
 	c.id = 0
 	c.is_human = true
 	c.health = 50.0
 	c.regen_delay_t = 4.0 # damaged just now
+	var rules := MatchRules.new()
+	rules.setup(MatchConfig.new(), c, [])
 
 	# First 3.9 s: no regen
 	for t in range(234): # 3.9 s
-		dmg_sys.step([c], DT, float(t) * DT)
+		rules.step(DT)
 	Assertions.assert_eq(c.health, 50.0, "No health regen before 4.0 s")
 
 	# Pass 4.0 s threshold (another 10 ticks = 0.166 s)
 	for t in range(10):
-		dmg_sys.step([c], DT, 3.9 + float(t) * DT)
+		rules.step(DT)
 	Assertions.assert_true(c.health > 50.0, "Regen started after 4.0 s delay")
 
 	# 1 second of regen at 15 HP/s
 	var h_before := c.health
 	for t in range(60):
-		dmg_sys.step([c], DT, 5.0 + float(t) * DT)
+		rules.step(DT)
 	Assertions.assert_near(c.health - h_before, 15.0, 0.05, "Regenerates at 15 HP/s")
 
 func test_dmg_03_kill_credit() -> void:
