@@ -124,7 +124,15 @@ func step_tick(tick: int, dt: float, human: CharacterState, tile_grid: TileGrid,
 	repath_timer += dt
 	weapon_switch_cd = maxf(0.0, weapon_switch_cd - dt)
 
-	if _pending_path:
+	if path_follower.consecutive_stuck >= 3:
+		# §5.7.3: 3 consecutive stuck checks -> path to a random node within 5 tiles
+		path_follower.consecutive_stuck = 0
+		var jitter := Vector2(rng.randf_range(-320.0, 320.0), rng.randf_range(-320.0, 320.0))
+		var cell := nav_grid.nearest_node_cell(bot.pos + jitter, 5)
+		if cell.x >= 0:
+			_request_path_to(Vector2(cell.x * 64 + 32, (cell.y + 1) * 64), nav_grid, tile_grid)
+			goal_timer = 0.0
+	elif _pending_path:
 		_request_path_to(_pending_goal, nav_grid, tile_grid)
 	elif path_follower.needs_repath or (repath_timer >= 1.0 and state == Enums.BotState.ENGAGE):
 		_request_path_to(goal_pos, nav_grid, tile_grid)
